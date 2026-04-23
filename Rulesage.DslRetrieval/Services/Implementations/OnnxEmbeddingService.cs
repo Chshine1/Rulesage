@@ -1,14 +1,13 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using Microsoft.ML.Tokenizers;
-using Rulesage.DslRetrieval.Embedding.Abstractions;
+using Rulesage.DslRetrieval.Services.Abstractions;
 
-namespace Rulesage.DslRetrieval.Embedding.Implementations;
+namespace Rulesage.DslRetrieval.Services.Implementations;
 
-public class OnnxEmbeddingService(string modelPath, string tokenizerPath): IEmbeddingService, IDisposable
+public class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath): IEmbeddingService, IDisposable
 {
     private readonly InferenceSession _inferenceSession = new(modelPath);
-    private readonly BertTokenizer _tokenizer = BertTokenizer.Create(tokenizerPath);
     private const int MaxSequenceLength = 256;
     private const int EmbeddingDimension = 384;
 
@@ -17,7 +16,7 @@ public class OnnxEmbeddingService(string modelPath, string tokenizerPath): IEmbe
         if (overlapSize >= chunkSize) throw new ArgumentException("Overlap size should be smaller than chunk size");
         if (chunkSize > MaxSequenceLength) throw new ArgumentException("Chunk size should be smaller than max sequence length");
         
-        var tokenized = _tokenizer.EncodeToIds(text).Select(x => (long)x).ToArray();
+        var tokenized = tokenizer.EncodeToIds(text).Select(x => (long)x).ToArray();
         if (tokenized.Length == 0) throw new ArgumentException("Tokenized text is empty");
         
         var batch = new List<long[]>();
