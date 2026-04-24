@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="Rulesage.Core/Rulesage.Core.fsproj" />
   <Project Path="Rulesage.DslRetrieval/Rulesage.DslRetrieval.csproj" />
 </Solution>
