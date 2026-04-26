@@ -1,16 +1,12 @@
 ﻿using System.Text.Json;
-using System.Text.Json.Serialization;
-using Microsoft.Extensions.Options;
 using Rulesage.Common.Types;
 using Rulesage.DslComposer.Services.Abstractions;
 using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.DslComposer.Services.Implementations;
 
-public class SemanticPrecomposer(ILlmService llm, IOptions<JsonSerializerOptions> options) : ISemanticPrecomposer
+public class SemanticPrecomposer(ILlmService llm, JsonSerializerOptions options) : ISemanticPrecomposer
 {
-    private readonly JsonSerializerOptions _options = options.Value;
-    
     private static string BuildPrompt(string nlTask, CompositionContext compositionContext)
     {
         var dslList = compositionContext.availableDsls.Select(d => d.semanticName).Aggregate((a, b) => $"{a}, {b}");
@@ -32,8 +28,6 @@ public class SemanticPrecomposer(ILlmService llm, IOptions<JsonSerializerOptions
     {
         var prompt = BuildPrompt(nlTask, compositionContext);
         var response = await llm.CompleteAsync(prompt, cancellationToken);
-        // TODO: Should be configured before injection
-        _options.Converters.Add(new JsonFSharpConverter());
-        return JsonSerializer.Deserialize<SemanticDslEntry>(response, _options) ?? throw new JsonException();
+        return JsonSerializer.Deserialize<SemanticDslEntry>(response, options) ?? throw new JsonException();
     }
 }

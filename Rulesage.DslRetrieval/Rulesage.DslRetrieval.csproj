@@ -10,7 +10,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.7" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
         <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.7" />
-        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.24.4" />
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.25.0" />
         <PackageReference Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7" PrivateAssets="all" />
