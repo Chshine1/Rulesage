@@ -1,6 +1,6 @@
-﻿namespace Rulesage.Core.Types
+﻿namespace Rulesage.Common.Types
 
-type private DslId = int
+type DslId = int
 type ContextKey = string
 type SubtaskKey = string
 type ProductionKey = string
@@ -12,9 +12,6 @@ type LeafValue =
     // Template of an NL prompt, with placeholders keys in context
     // Produce a literal by prompting an LLM
     | NlLeaf of promptTemplate: string
-
-// The context this dsl expects from the caller
-type ContextEntry = ContextKey * AstSignature
 
 // Fill a parameter in an AST signature
 // So its type is already defined (as in the singature)
@@ -36,7 +33,7 @@ type Subtask =
 
 type DslEntry = {
     id: DslId
-    context: ContextEntry list
+    context: (ContextKey * AstSignature) list
     produce: (ProductionKey * FilledAst) list
     subtasks: (SubtaskKey * Subtask) list
 }

@@ -6,7 +6,7 @@ using Rulesage.DslRetrieval.Services.Abstractions;
 
 namespace Rulesage.DslRetrieval.Services.Implementations;
 
-public class IdfService: IIdfService
+internal class IdfService: IIdfService
 {
     private readonly Tokenizer _tokenizer;
     private readonly IServiceScopeFactory _scopeFactory;

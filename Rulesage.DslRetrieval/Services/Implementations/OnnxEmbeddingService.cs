@@ -5,7 +5,7 @@ using Rulesage.DslRetrieval.Services.Abstractions;
 
 namespace Rulesage.DslRetrieval.Services.Implementations;
 
-public class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath): IEmbeddingService, IDisposable
+internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath): IEmbeddingService, IDisposable
 {
     private readonly InferenceSession _inferenceSession = new(modelPath);
     private const int MaxSequenceLength = 256;

@@ -1,4 +1,6 @@
 <Solution>
-  <Project Path="Rulesage.Core/Rulesage.Core.fsproj" />
+  <Project Path="Rulesage.Common/Rulesage.Common.fsproj" />
+  <Project Path="Rulesage.DslComposer/Rulesage.DslComposer.csproj" />
   <Project Path="Rulesage.DslRetrieval/Rulesage.DslRetrieval.csproj" />
+  <Project Path="Rulesage.Shared/Rulesage.Shared.csproj" />
 </Solution>

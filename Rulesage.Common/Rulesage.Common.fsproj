@@ -8,8 +8,8 @@
     <ItemGroup>
         <Compile Include="Types\AstNodeSignature.fs" />
         <Compile Include="Types\DslEntry.fs" />
-        
-        <Compile Include="Serialization.fs" />
+        <Compile Include="Types\DslComposition.fs" />
+        <Compile Include="Types\CompositionContext.fs" />
     </ItemGroup>
 
     <ItemGroup>

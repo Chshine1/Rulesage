@@ -9,12 +9,12 @@ using Rulesage.DslRetrieval.Options;
 using Rulesage.DslRetrieval.Services.Abstractions;
 using Rulesage.DslRetrieval.Utils;
 
-namespace Rulesage.DslRetrieval.Services.Implementations;
+namespace Rulesage.DslRetrieval;
 
 public class DslRetrievalService(
     DslDbContext dbContext,
     IEmbeddingService embeddingService,
-    IdfService idfService,
+    IIdfService idfService,
     IOptions<RetrievalOptions> options,
     ILogger<DslRetrievalService> logger)
     : IDslRetrievalService
@@ -22,11 +22,11 @@ public class DslRetrievalService(
     private readonly RetrievalOptions _options = options.Value;
 
     public async Task<IReadOnlyList<DslEntry>> RetrieveAsync(
-        string query,
+        string nlTask,
         float? targetLevel = null,
         CancellationToken cancellationToken = default)
     {
-        var queryVector = new Vector(embeddingService.GetEmbedding(query));
+        var queryVector = new Vector(embeddingService.GetEmbedding(nlTask));
 
         var coarseCandidates = await dbContext.DslEntries
             .Select(e => new { Entry = e, CosineDistance = e.Embedding.CosineDistance(queryVector) })

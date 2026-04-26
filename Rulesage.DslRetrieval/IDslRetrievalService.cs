@@ -1,12 +1,12 @@
 ﻿using Rulesage.DslRetrieval.Database.Entities;
 
-namespace Rulesage.DslRetrieval.Services.Abstractions;
+namespace Rulesage.DslRetrieval;
 
 
 public interface IDslRetrievalService
 {
     Task<IReadOnlyList<DslEntry>> RetrieveAsync(
-        string query,
+        string nlTask,
         float? targetLevel = null,
         CancellationToken cancellationToken = default);
 }
