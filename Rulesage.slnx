@@ -3,4 +3,5 @@
   <Project Path="Rulesage.DslComposer/Rulesage.DslComposer.csproj" />
   <Project Path="Rulesage.DslRetrieval/Rulesage.DslRetrieval.csproj" />
   <Project Path="Rulesage.Shared/Rulesage.Shared.csproj" />
+  <Project Path="Rulesage.Synthesis/Rulesage.Synthesis.csproj" />
 </Solution>

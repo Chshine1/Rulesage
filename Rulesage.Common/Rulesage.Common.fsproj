@@ -11,6 +11,7 @@
         <Compile Include="Types\SemanticComposition.fs" />
         <Compile Include="Types\CompositionContext.fs" />
         <Compile Include="Types\CompositionIr.fs" />
+        <Compile Include="Types\Synthesis.fs" />
         <Compile Include="Utils\DslIrResolution.fs" />
     </ItemGroup>
 
