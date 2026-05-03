@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -16,14 +17,13 @@ public static class InitCommand
             using var scope = serviceProvider.CreateScope();
             
             var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-            var migrations = config.GetValue<string[]>("Migrations");
+            var migrations = config.GetRequiredSection("Migrations").Get<string[]>();
             if (migrations == null) throw new Exception("Missing Migrations");
             
             var dataSource = scope.ServiceProvider.GetRequiredService<NpgsqlDataSource>();
             foreach (var migration in migrations)
             {
-                var basePath = AppContext.BaseDirectory;
-                var sqlPath = Path.Combine(basePath, migration);
+                var sqlPath = Path.GetFullPath(migration, AppContext.BaseDirectory);
                 if (!File.Exists(sqlPath))
                     throw new FileNotFoundException($"Migration script not found: {sqlPath}");
 
