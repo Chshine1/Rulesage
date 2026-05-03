@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/ProjectFiles/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="docker-compose.yml" />
+  </Folder>
+  <Folder Name="/Src/">
+    <Project Path="src/Rulesage.Cli/Rulesage.Cli.csproj" />
+    <Project Path="src/Rulesage.Common/Rulesage.Common.fsproj" />
+    <Project Path="src/Rulesage.Composition/Rulesage.Composition.csproj" />
+    <Project Path="src/Rulesage.Retrieval/Rulesage.Retrieval.csproj" />
+    <Project Path="src/Rulesage.Shared/Rulesage.Shared.csproj" />
+    <Project Path="src/Rulesage.Synthesis/Rulesage.Synthesis.fsproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="tests/Rulesage.Retrieval.Tests/Rulesage.Retrieval.Tests.csproj" />
+  </Folder>
+</Solution>

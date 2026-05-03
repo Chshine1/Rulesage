@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Types\SynthesizedValue.fs" />
+
+        <Compile Include="Services\Abstractions\IConverterService.fs" />
+
+        <Compile Include="Services\Abstractions\IOperationService.fs" />
+
+        <Compile Include="Services\Abstractions\INlTaskResolver.fs" />
+
+        <Compile Include="Services\Implementations\NlTaskResolver.fs" />
+
+        <Compile Include="SynthesisUnit.fs" />
+      
+        <Compile Include="IOperationSynthesizer.fs" />
+      
+        <Compile Include="OperationSynthesizer.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Rulesage.Common\Rulesage.Common.fsproj" />
+      <ProjectReference Include="..\Rulesage.Composition\Rulesage.Composition.csproj" />
+      <ProjectReference Include="..\Rulesage.Retrieval\Rulesage.Retrieval.csproj" />
+    </ItemGroup>
+
+</Project>

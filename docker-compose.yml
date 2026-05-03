@@ -1,0 +1,16 @@
+﻿services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: rulesage-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: rulesage_user
+      POSTGRES_PASSWORD: rulesage_password
+      POSTGRES_DB: rulesage_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
