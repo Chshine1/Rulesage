@@ -5,6 +5,7 @@ type BlueprintValue =
     | NodeBlueprint of blueprint: NodeBlueprint
     | FromParameter of parameterKey: string
     | FromSubtask of subtaskKey: string * outputKey: string
+    | Array of arr: BlueprintValue array
 
 and NodeBlueprint =
     {

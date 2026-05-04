@@ -5,6 +5,7 @@ type Identifier = { id: int; ir: string }
 type ParamType =
     | Leaf
     | Node of nodeType: Identifier
+    | Array of paramType: ParamType
 
 type Node =
     {

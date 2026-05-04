@@ -5,6 +5,7 @@ open Rulesage.Common.Types.Domain
 type SynthesizedValue =
     | Leaf of value: string
     | Node of instance: SynthesizedNode
+    | Array of arr: SynthesizedValue array
 
 and SynthesizedNode =
     {

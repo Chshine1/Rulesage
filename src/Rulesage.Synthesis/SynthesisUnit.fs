@@ -128,6 +128,11 @@ type SynthesisUnit
                     | None -> return failwith "subtask not found"
                 }
             )
+        | BlueprintValue.Array arr ->
+            task {
+                let! r = arr |> Seq.map SynthesizeValueAsync |> whenAll
+                return SynthesizedValue.Array r
+            }
 
     and SynthesizeNlTaskAsync (nlTask: string) =
         task {

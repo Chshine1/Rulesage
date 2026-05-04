@@ -17,9 +17,4 @@
       <ProjectReference Include="..\Rulesage.Shared\Rulesage.Shared.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Services\Abstractions\" />
-      <Folder Include="Services\Implementations\" />
-    </ItemGroup>
-
 </Project>

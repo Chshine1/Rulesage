@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using System.Text.RegularExpressions;
-using Microsoft.FSharp.Collections;
 using Rulesage.Cli.Commands.Nodes;
 using Rulesage.Cli.Utils;
 using Rulesage.Common.Types.Domain;
@@ -67,22 +66,22 @@ public partial class NodesHandler(
         {
             if (!p.Identifier.HasValue)
             {
-                paramsMap.Add(p.Key, ParamType.Leaf);
+                paramsMap.Add(p.Key, p.IsList ? ParamType.NewArray(ParamType.Leaf) : ParamType.Leaf);
                 continue;
             }
 
             var id = p.Identifier.Value.Item1;
             if (id != -1)
             {
-                paramsMap.Add(p.Key,
-                    ParamType.NewNode(new Identifier(id, missingIrNodes.First(n => n.id.id == id).id.ir)));
+                var nodeType = ParamType.NewNode(new Identifier(id, missingIrNodes.First(n => n.id.id == id).id.ir));
+                paramsMap.Add(p.Key, p.IsList ? ParamType.NewArray(nodeType) : nodeType);
             }
             else
             {
-                paramsMap.Add(p.Key,
-                    ParamType.NewNode(new Identifier(
-                        missingIdNodes.First(n => n.id.ir == p.Identifier.Value.Item2).id.id,
-                        p.Identifier.Value.Item2)));
+                var nodeType = ParamType.NewNode(new Identifier(
+                    missingIdNodes.First(n => n.id.ir == p.Identifier.Value.Item2).id.id,
+                    p.Identifier.Value.Item2));
+                paramsMap.Add(p.Key, p.IsList ? ParamType.NewArray(nodeType) : nodeType);
             }
         }
 
@@ -91,7 +90,7 @@ public partial class NodesHandler(
 
     private static readonly Regex paramRegex = ParamRegex();
 
-    private record ParseParamResult(string Key, (int, string)? Identifier);
+    private record ParseParamResult(string Key, (int, string)? Identifier, bool IsList);
 
     private static IEnumerable<ParseParamResult> ParseParams(List<string> raw)
     {
@@ -102,17 +101,18 @@ public partial class NodesHandler(
 
             var key = match.Groups[1].Value;
             var typeKind = match.Groups[2].Value;
+            var isList = match.Groups[4].Success;
 
             if (typeKind.Equals("leaf", StringComparison.OrdinalIgnoreCase))
             {
-                return new ParseParamResult(key, null);
+                return new ParseParamResult(key, null, isList);
             }
 
             var identStr = match.Groups[3].Value;
             var ident = identStr.All(char.IsDigit)
                 ? (int.Parse(identStr), "")
                 : (-1, identStr);
-            return new ParseParamResult(key, ident);
+            return new ParseParamResult(key, ident, isList);
         });
     }
 
@@ -127,7 +127,7 @@ public partial class NodesHandler(
         Console.WriteLine();
     }
 
-    [GeneratedRegex(@"^\s*(\S+?)\s*=\s*(leaf|node:(.+))\s*$",
+    [GeneratedRegex(@"^\s*(\S+?)\s*=\s*(leaf|node:([^\[]+))(\[\])?\s*$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant)]
     private static partial Regex ParamRegex();
 }
