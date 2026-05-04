@@ -43,7 +43,7 @@ public partial class NodesHandler(
         }
     }
 
-    public async Task AddNodeAsync(string ir, string description, List<string> rawParameters,
+    public async Task AddNodeAsync(string ir, string description, string[] rawParameters,
         CancellationToken cancellationToken = default)
     {
         var parsedParams = ParseParams(rawParameters).ToArray();
@@ -92,7 +92,7 @@ public partial class NodesHandler(
 
     private record ParseParamResult(string Key, (int, string)? Identifier, bool IsList);
 
-    private static IEnumerable<ParseParamResult> ParseParams(List<string> raw)
+    private static IEnumerable<ParseParamResult> ParseParams(string[] raw)
     {
         return raw.Select(s =>
         {

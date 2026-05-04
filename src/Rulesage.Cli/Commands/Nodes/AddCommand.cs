@@ -18,11 +18,13 @@ public static partial class NodeCommands
             {
                 Required = true
             },
-            new Option<List<string>>("--param")
+            new Option<string[]>("--param")
             {
                 Required = false,
-                DefaultValueFactory = _ => []
-            },
+                DefaultValueFactory = _ => [],
+                AllowMultipleArgumentsPerToken = true,
+                Description = "<key>=<type>:[target]"
+            }
         };
 
         cmd.SetAction(async (result, cancellationToken) =>
@@ -32,7 +34,7 @@ public static partial class NodeCommands
             await handler.AddNodeAsync(
                 result.GetRequiredValue<string>("--ir"),
                 result.GetRequiredValue<string>("--desc"),
-                result.GetRequiredValue<List<string>>("--param"), cancellationToken);
+                result.GetRequiredValue<string[]>("--param"), cancellationToken);
         });
 
         return cmd;

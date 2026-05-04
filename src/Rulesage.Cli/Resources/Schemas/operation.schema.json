@@ -1,0 +1,220 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rulesage.dev/schemas/operation.json",
+  "title": "Operation Definition",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "ir": {
+      "$ref": "#/$defs/Ir"
+    },
+    "desc": {
+      "type": "string"
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ParamType"
+      }
+    },
+    "subtasks": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/Subtask"
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/NodeBlueprint"
+      }
+    }
+  },
+  "required": ["ir", "desc", "params", "subtasks", "outputs"],
+  "$defs": {
+    "Ir": {
+      "type": "string",
+      "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+    },
+    "ParamType": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "$type": {
+              "const": "leaf"
+            },
+            "array": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "required": ["key", "$type"]
+        }, {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "$type": {
+              "const": "node"
+            },
+            "node": {
+              "$ref": "#/$defs/Ir"
+            },
+            "array": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "required": ["key", "$type", "node"]
+        }
+      ]
+    },
+    "Subtask": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "$type": {
+              "const": "operation"
+            },
+            "operation": {
+              "$ref": "#/$defs/Ir"
+            },
+            "args": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/BlueprintValue"
+              }
+            }
+          },
+          "required": ["$type", "operation", "args"]
+        }, {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "$type": {
+              "const": "converter"
+            },
+            "converter": {
+              "$ref": "#/$defs/Ir"
+            },
+            "args": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/BlueprintValue"
+              }
+            }
+          },
+          "required": ["$type", "converter", "args"]
+        }, {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "$type": {
+              "const": "nlTask"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": ["$type", "template"]
+        }
+      ]
+    },
+    "BlueprintValue": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "$type": {
+              "const": "leaf"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": ["$type", "template"]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "$type": {
+              "const": "nodeBlueprint"
+            },
+            "blueprint": {
+              "$ref": "#/$defs/NodeBlueprint"
+            }
+          },
+          "required": ["$type", "node", "args"]
+        }, {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "$type": {
+              "const": "fromParameter"
+            },
+            "parameterKey": {
+              "type": "string"
+            }
+          },
+          "required": ["$type", "parameterKey"]
+        }, {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "$type": {
+              "const": "fromSubtask"
+            },
+            "subtaskKey": {
+              "type": "string"
+            },
+            "outputKey": {
+              "type": "string"
+            }
+          },
+          "required": ["$type", "subtaskKey", "outputKey"]
+        }, {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "$type": {
+              "const": "array"
+            },
+            "arr": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/BlueprintValue"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "NodeBlueprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "node": {
+          "$ref": "#/$defs/Ir"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/BlueprintValue"
+          }
+        }
+      },
+      "required": ["node", "args"]
+    }
+  }
+}
