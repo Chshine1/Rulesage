@@ -11,10 +11,12 @@
         <Compile Include="Types\Domain\OperationBlueprint.fs" />
         <Compile Include="Types\Composition\CompositionContext.fs" />
         <Compile Include="Types\Composition\SemanticOperation.fs" />
+        <Compile Include="Grammar\Domain\Primitive.fs" />
         <EmbeddedResource Include="Migrations\*.sql" />
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="FParsec" Version="1.1.1" />
       <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
       <PackageReference Update="FSharp.Core" Version="10.1.203" />
       <PackageReference Include="Npgsql" Version="10.0.2" />
