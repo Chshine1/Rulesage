@@ -1,0 +1,38 @@
+﻿ir             ::= /[a-zA-Z-][a-zA-Z0-9-]*/
+key           ::= /[a-zA-Z][a-zA-Z0-9]*/
+string         ::= "\"" /[^"]*/ "\""
+
+OperationFile  ::= (OperationDef)*
+
+OperationDef   ::= "operation" ir ":" NEWLINE
+                   INDENT "desc"  string NEWLINE
+                   "params" ":" NEWLINE
+                   INDENT (ParamDef)* DEDENT
+                   "steps" ":" NEWLINE
+                   INDENT (SubtaskDef)* DEDENT
+                   "outputs" ":" NEWLINE
+                   INDENT (OutputDef)* DEDENT
+                   DEDENT
+
+ParamDef       ::= key ":" TypeExpr NEWLINE
+TypeExpr       ::= AtomicType ("[]")*
+AtomicType     ::= "leaf"
+                 | "node" ir
+
+SubtaskDef     ::= key "=" SubtaskExpr NEWLINE
+SubtaskExpr    ::= "op" ir ArgBlock
+                 | "conv" ir ArgBlock
+                 | "nl" string
+                 | "map" SubtaskExpr
+
+ArgBlock       ::= (NEWLINE (INDENT ArgDef* DEDENT))?
+ArgDef         ::= key ":" ValueExpr NEWLINE
+
+OutputDef      ::= key ":" ValueExpr NEWLINE
+ValueExpr      ::= RefExpr
+                 | "leaf" string
+                 | "node" ir ArgBlock
+                 | "[" (ValueExpr ("," ValueExpr)*)? "]"
+
+RefExpr        ::= "$args." key
+                 | "$subtasks." key "." key

@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.Tokenizers;
@@ -18,8 +19,12 @@ public static class ServiceCollectionExtensions
         public IServiceCollection AddSharedModule(string dbConnectionString, string onnxModelPath, string vocabPath,
             JsonSerializerOptions? jsonOptions = null)
         {
-            jsonOptions ??= new JsonSerializerOptions();
+            jsonOptions ??= new JsonSerializerOptions
+            {
+                TypeInfoResolver = new DefaultJsonTypeInfoResolver()
+            };
             jsonOptions.Converters.Add(new JsonFSharpConverter());
+            jsonOptions.MakeReadOnly();
             collection.AddSingleton(jsonOptions);
 
             collection.AddSingleton<Tokenizer>(WordPieceTokenizer.Create(vocabPath,

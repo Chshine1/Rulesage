@@ -1,0 +1,63 @@
+﻿# $schema: ../Schemas/node.schema.json
+- ir: "key-value-pair"
+  desc: "A key-value pair"
+  parameters:
+    key:
+      $type: leaf
+    value:
+      $type: leaf
+
+- ir: "property-decl"
+  desc: "Declare a property, needs name, accessModifier, type, defaultValue (including `null!`, empty string for no default value) and an array of attributes"
+  parameters:
+    name:
+      $type: leaf
+    accessModifier:
+      $type: leaf
+    type:
+      $type: leaf
+    attributes:
+      $type: array
+      arr:
+        $type: node
+        node: "attribute-decl"
+    defaultValue:
+      $type: leaf
+
+- ir: "attribute-decl"
+  desc: "Declare an attribute, needs attribute name, positional arags array, named args array"
+  parameters:
+    name:
+      $type: leaf
+    positionalArgs:
+      $type: array
+      arr:
+        $type: leaf
+    namedArgs:
+      $type: array
+      arr:
+        $type: node
+        node: "key-value-pair"
+      
+- ir: "entity-bare-def"
+  desc: ""
+  parameters: 
+    name:
+      $type: leaf
+    primaryKey:
+      $type: leaf
+    scalarColumns:
+      $type: array
+      arr:
+        $type: node
+        node: "key-value-pair"
+      
+- ir: "entity-relation-def"
+  desc: ""
+  parameters: 
+    type:
+      $type: leaf # one-to-one, one-to-many, many-to-many
+    principalEntity:
+      $type: leaf
+    dependentEntity:
+      $type: leaf
