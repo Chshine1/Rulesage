@@ -2,13 +2,7 @@
 
 type BlueprintValue =
     | Leaf of template: string
-    | NodeBlueprint of blueprint: NodeBlueprint
+    | NodeBlueprint of node: Identifier * args: Map<string, BlueprintValue>
     | FromParameter of parameterKey: string
     | FromSubtask of subtaskKey: string * outputKey: string
     | Array of arr: BlueprintValue array
-
-and NodeBlueprint =
-    {
-        node: Identifier
-        args: Map<string, BlueprintValue>
-    }

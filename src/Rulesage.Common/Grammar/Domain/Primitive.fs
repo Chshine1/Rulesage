@@ -10,7 +10,7 @@ type OperationDefRecord =
         Level: float32
         Parameters: Map<string, ParamType>
         Subtasks: Map<string, Subtask>
-        Outputs: Map<string, NodeBlueprint>
+        Outputs: Map<string, BlueprintValue>
     }
 
 
@@ -40,31 +40,21 @@ module Primitive =
 
     let ir: Parser<string, IndentState> = regex "[a-zA-Z-][a-zA-Z0-9-]*"
 
-    let key: Parser<string, IndentState> = regex "[a-zA-Z_][a-zA-Z0-9_]*"
+    let key: Parser<string, IndentState> = regex "[a-zA-Z][a-zA-Z0-9]*"
 
     let stringLiteral: Parser<string, IndentState> =
         between (pstring "\"") (pstring "\"") (manyChars (noneOf "\""))
 
-    let atomicType, atomicTypeRef =
-        createParserForwardedToRef<ParamType, IndentState> ()
+    let atomicType: Parser<ParamType, IndentState> =
+        attempt (pstring "leaf" >>% ParamType.Leaf)
+        <|> (pstring "node" >>. spaces1 >>. ir |>> fun ir -> ParamType.Node { id = -1; ir = ir })
 
-    let typeExpr: Parser<ParamType, IndentState> =
+    let paramType: Parser<ParamType, IndentState> =
         atomicType .>>. many (pstring "[]")
         |>> fun (baseTy, arrays) -> List.fold (fun acc _ -> ParamType.Array acc) baseTy arrays
 
-    atomicTypeRef.Value <-
-        attempt (pstring "leaf" >>% ParamType.Leaf)
-        <|> (pstring "node" >>. spaces1 >>. ir |>> fun ir -> Node { id = -1; ir = ir })
-
     let paramDef: Parser<string * ParamType, IndentState> =
-        key .>> spaces .>> pstring ":" .>> spaces .>>. typeExpr .>> skipNewline
-
-    let refExpr: Parser<BlueprintValue, IndentState> =
-        pstring "$" >>. key .>>. many (pstring "." >>. key)
-        |>> fun (first, rest) ->
-            match rest with
-            | [] -> FromParameter first
-            | _ -> FromSubtask(first, String.concat "." rest)
+        key .>> spaces .>> pstring ":" .>> spaces .>>. paramType .>> skipNewline
 
     let valueExpr, valueExprRef =
         createParserForwardedToRef<BlueprintValue, IndentState> ()
@@ -73,84 +63,31 @@ module Primitive =
         key .>> spaces .>> pstring ":" .>> spaces .>>. valueExpr .>> skipNewline
 
     let argBlock: Parser<Map<string, BlueprintValue>, IndentState> =
-        skipNewline >>. indentedBlock (many argDef) |>> Map.ofList
-
-    let nodeBlueprintValue: Parser<NodeBlueprint, IndentState> =
-        pstring "node" >>. spaces1 >>. ir .>>. argBlock
-        |>> fun (nodeIr, args) ->
-            {
-                node = { id = -1; ir = nodeIr }
-                args = args
-            }
-
-    let leafValue: Parser<BlueprintValue, IndentState> =
-        pstring "leaf" >>. spaces1 >>. stringLiteral |>> Leaf
-
-    let arrayValue: Parser<BlueprintValue, IndentState> =
-        between (pstring "[") (pstring "]") (sepBy (valueExpr .>> spaces) (pstring "," .>> spaces))
-        |>> (fun xs -> Array(Array.ofList xs))
+        attempt (skipNewline >>. indentedBlock (many argDef) |>> Map.ofList)
+        <|>% Map.empty
 
     valueExprRef.Value <-
-        attempt refExpr
-        <|> attempt leafValue
-        <|> attempt (nodeBlueprintValue |>> NodeBlueprint)
-        <|> arrayValue
+        attempt (pstring "$args." >>. key |>> BlueprintValue.FromParameter)
+        <|> attempt (pstring "$subtasks." >>. key .>> pstring "." .>>. key |>> BlueprintValue.FromSubtask)
+        <|> attempt (pstring "leaf" >>. spaces1 >>. stringLiteral |>> BlueprintValue.Leaf)
+        <|> attempt (pstring "node" >>. spaces1 >>. ir .>>. argBlock |>> fun (nodeIr, args) -> BlueprintValue.NodeBlueprint({ id = -1; ir = nodeIr }, args ))
+        <|> (between (pstring "[") (pstring "]") (sepBy (valueExpr .>> spaces) (pstring "," .>> spaces)) |>> (fun xs -> BlueprintValue.Array(Array.ofList xs)))
 
-    let subtaskDef, subtaskDefRef =
-        createParserForwardedToRef<string * Subtask, IndentState> ()
+    let subtaskExpr, subtaskExprRef =
+        createParserForwardedToRef<Subtask, IndentState> ()
+        
+    subtaskExprRef.Value <- attempt (pstring "op" >>. spaces1 >>. ir .>>. argBlock |>> fun (opIr, args) -> Subtask.InvokeOperation({ id = -1; ir = opIr }, args))
+        <|> attempt (pstring "conv" >>. spaces1 >>. ir .>>. argBlock |>> fun (convIr, args) -> Subtask.InvokeConverter({ id = -1; ir = convIr }, args))
+        <|> attempt (pstring "nl" >>. spaces1 >>. stringLiteral |>> Subtask.NlTask)
+        <|> (pstring "map" >>. spaces1 >>. subtaskExpr |>> Subtask.Map)
+    
+    let subtaskDef: Parser<string * Subtask, IndentState> =
+        key .>> spaces .>> pstring "=" .>> spaces .>>. subtaskExpr .>> skipNewline
 
-    let opSubtask: Parser<Subtask, IndentState> =
-        pstring "op" >>. spaces1 >>. ir .>>. argBlock
-        |>> fun (opIr, args) -> InvokeOperation({ id = -1; ir = opIr }, args)
-
-    let convSubtask: Parser<Subtask, IndentState> =
-        pstring "conv" >>. spaces1 >>. ir .>>. argBlock
-        |>> fun (convIr, args) -> InvokeConverter({ id = -1; ir = convIr }, args)
-
-    let nlSubtask: Parser<Subtask, IndentState> =
-        pstring "nl" >>. spaces1 >>. stringLiteral |>> NlTask
-
-    let subtaskExpr: Parser<Subtask, IndentState> =
-        opSubtask <|> convSubtask <|> nlSubtask
-
-    let mapSubtask: Parser<Subtask, IndentState> =
-        pstring "map" >>. spaces1 >>. subtaskExpr |>> Subtask.Map
-
-    subtaskDefRef.Value <-
-        key .>> spaces .>> pstring "=" .>> spaces .>>. (subtaskExpr <|> mapSubtask) .>> skipNewline
-
-    let outputDef: Parser<string * NodeBlueprint, IndentState> =
+    let outputDef: Parser<string * BlueprintValue, IndentState> =
         key .>> spaces .>> pstring ":" .>> spaces .>>. valueExpr .>> skipNewline
-        >>= fun (k, v) ->
-            match v with
-            | NodeBlueprint n -> preturn (k, n)
-            | _ -> fail $"outputs only allows nodes, get %A{v} instead"
 
     let operationDef: Parser<OperationDefRecord, IndentState> =
-        pstring "operation" >>. spaces1 >>. ir
-        .>> spaces
-        .>> pstring ":"
-        .>> skipNewline
-        >>. indentedBlock (
-            pstring "desc" >>. spaces1 >>. stringLiteral .>> skipNewline
-            .>>. (pstring "params" >>. spaces .>> pstring ":" .>> skipNewline
-                  >>. indentedBlock (many paramDef))
-            .>>. (pstring "steps" >>. spaces .>> pstring ":" .>> skipNewline
-                  >>. indentedBlock (many subtaskDef))
-            .>>. (pstring "outputs" >>. spaces .>> pstring ":" .>> skipNewline
-                  >>. indentedBlock (many outputDef))
-        )
-        |>> fun (((desc, params_), subtasks_), outputs_) ->
-            {
-                Id = ""
-                Description = desc
-                Level = 0.0f
-                Parameters = Map.ofList params_
-                Subtasks = Map.ofList subtasks_
-                Outputs = Map.ofList outputs_
-            }
-
-    let operationDefFinal: Parser<OperationDefRecord, IndentState> =
         let inner (name: string) =
             pstring "desc" >>. spaces1 >>. stringLiteral .>> skipNewline
             .>>. (pstring "params" >>. spaces .>> pstring ":" .>> skipNewline
@@ -176,7 +113,7 @@ module Primitive =
         >>= fun name -> indentedBlock (inner name)
 
     let operationFile: Parser<OperationDefRecord list, IndentState> =
-        many operationDefFinal .>> eof
+        many operationDef .>> eof
 
     let parseDsl (input: string) : Result<OperationDefRecord list, string> =
         match runParserOnString operationFile initialState "" input with
