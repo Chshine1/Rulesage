@@ -1,37 +1,37 @@
-﻿ir             ::= /[a-zA-Z-][a-zA-Z0-9-]*/
+﻿id             ::= /[a-zA-Z-][a-zA-Z0-9-]*/
 key            ::= /[a-zA-Z][a-zA-Z0-9]*/
 stringLiteral  ::= "\"" /[^"]*/ "\""
 
 AtomicType     ::= "leaf"
-                 | "node" ir
-ParamType      ::= AtomicType ("[]")*
-ParamDef       ::= key ":" ParamType NEWLINE
+                 | "node" id
+DepType        ::= AtomicType ("[]")*
+DepDef         ::= key ":" DepType NEWLINE
 
-RefSourceExpr  ::= "$args." key
-                 | "$subtasks." key "." key
+RefSourceExpr  ::= "$deps." key
+                 | "$members." key "." key
 RefExpr        ::= RefSourceExpr ("." key)*
 ValueExpr      ::= RefExpr
                  | "leaf" stringLiteral
-                 | "node" ir ArgBlock
+                 | "node" id ArgBlock
                  | "[" (ValueExpr ("," ValueExpr)*)? "]"
 ArgDef         ::= key ":" ValueExpr NEWLINE
 ArgBlock       ::= (NEWLINE (INDENT ArgDef* DEDENT))?
 
-SubtaskExpr    ::= "op" ir ArgBlock
-                 | "conv" ir ArgBlock
+MemberExpr     ::= "rule" id ArgBlock
+                 | "derive" id ArgBlock
                  | "nl" stringLiteral
-                 | "map" SubtaskExpr
-SubtaskDef     ::= key "=" SubtaskExpr NEWLINE
+                 | "seq" MemberExpr
+MemberDef      ::= key "=" MemberExpr NEWLINE
 
-OutputDef      ::= key ":" ValueExpr NEWLINE
+BodyDef        ::= key ":" ValueExpr NEWLINE
 
-OperationDef   ::= "operation" ir ":" NEWLINE
+RuleDef        ::= "rule" id ":" NEWLINE
                    INDENT "desc"  stringLiteral NEWLINE
-                   "params" ":" NEWLINE
-                   INDENT (ParamDef)* DEDENT
-                   "steps" ":" NEWLINE
-                   INDENT (SubtaskDef)* DEDENT
-                   "outputs" ":" NEWLINE
-                   INDENT (OutputDef)* DEDENT
+                   "depends" ":" NEWLINE
+                   INDENT (DepDef)* DEDENT
+                   "members" ":" NEWLINE
+                   INDENT (MemberDef)* DEDENT
+                   "body" ":" NEWLINE
+                   INDENT (BodyDef)* DEDENT
                    DEDENT
-OperationFile  ::= (OperationDef)*
+RuleSet        ::= (RuleDef)*
