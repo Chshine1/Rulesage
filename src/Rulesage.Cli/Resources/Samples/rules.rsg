@@ -1,0 +1,302 @@
+﻿rule cli-project:
+  desc "Full structure and conventions of a Rulesage.Cli project"
+  depends:
+    projectName: leaf
+    primaryCommands: node bare-command[]
+    serviceDefinitions: node bare-service[]
+    additionalExtensions: node extension-target[]
+  members:
+    commandGroups = derive split-commands-by-subcommand-count
+      commands: $deps.primaryCommands
+    programFile = rule program-cs
+      primaryCommands: $deps.primaryCommands
+    dedicatedHandlers = seq rule dedicated-handler
+      command: $members.commandGroups.multi
+    commonHandler = rule common-handler
+      commonCommands: $members.commandGroups.common
+    dedicatedHandlerClassNames = derive map-string-suffix
+      items: derive get-command-names
+        commands: $members.commandGroups.multi
+      suffix: leaf "Handler"
+    commonHandlerClassNames = derive if-not-empty
+      items: $members.commandGroups.common
+      value: [leaf "CommonHandler"]
+      else: []
+    allHandlerClassNames = derive concat-arrays
+      arrays: [$members.dedicatedHandlerClassNames, $members.commonHandlerClassNames]
+    serviceGroups = [node service-group
+      kind: leaf "Services"
+      registrations: seq rule service-to-registration
+        service: $deps.serviceDefinitions
+    ]
+    diExtension = rule di-extension-file
+      handlerClassNames: $members.allHandlerClassNames
+      serviceGroups: $members.serviceGroups
+    serviceAbstractions = seq rule service-abstraction
+      service: $deps.serviceDefinitions
+    serviceImplementations = seq rule service-implementation
+      service: $deps.serviceDefinitions
+    otherExtensions = seq rule general-extension
+      target: $deps.additionalExtensions
+    allFiles = derive flattened-array
+      from: [[$members.programFile], [$members.diExtension], $members.dedicatedHandlers, [$members.commonHandler], $members.serviceAbstractions, $members.serviceImplementations, $members.otherExtensions]
+  body:
+    files: $members.allFiles
+
+rule program-cs:
+  desc "Program.cs file with Main method following conventions"
+  depends:
+    primaryCommands: node bare-command[]
+  members:
+    commandSteps = seq rule primary-command-registration-step
+      command: $deps.primaryCommands
+    steps = derive concat-arrays
+      arrays: [
+        [node step description: leaf "build-host"],
+        [node step description: leaf "resolve-service-provider"],
+        [node step description: leaf "create-root-command"],
+        $members.commandSteps,
+        [node step description: leaf "register-primary-commands-to-root"],
+        [node step description: leaf "invoke-root-command"]
+      ]
+  body:
+    file: node file
+      path: leaf "Program.cs"
+      namespace: leaf "Rulesage.Cli"
+      class: node class
+        name: leaf "Program"
+        attributes: [node attribute
+          name: leaf "UsedImplicitly"
+        ]
+        methods: [node method
+          name: leaf "Main"
+          returnType: leaf "int"
+          parameters: [leaf "string[] args"]
+          body: $members.steps
+        ]
+
+rule primary-command-registration-step:
+  desc "Steps to declare a primary command and register its subcommands"
+  depends:
+    command: node bare-command
+  members:
+    subSteps = seq rule subcommand-registration-step
+      subcommand: $deps.command.subcommands
+  body:
+    steps: derive concat-arrays
+      arrays: [
+        [node step description: leaf "declare-primary-command", commandName: $deps.command.name],
+        $members.subSteps
+      ]
+
+rule subcommand-registration-step:
+  desc "Register a subcommand and its nested subcommands"
+  depends:
+    subcommand: node bare-command
+  members:
+    nestedSteps = seq rule subcommand-registration-step
+      subcommand: $deps.subcommand.subcommands
+  body:
+    steps: derive concat-arrays
+      arrays: [
+        [node step description: leaf "register-subcommand", name: $deps.subcommand.name],
+        $members.nestedSteps
+      ]
+
+rule dedicated-handler:
+  desc "Handler class for a command with multiple subcommands"
+  depends:
+    command: node bare-command
+  members:
+    className = derive concat-strings
+      parts: [$deps.command.name, leaf "Handler"]
+    subcommandMethods = seq rule handler-method
+      sub: $deps.command.subcommands
+  body:
+    file: node file
+      path: derive concat-strings
+        parts: [leaf "Handlers/", $members.className, leaf ".cs"]
+      namespace: leaf "Rulesage.Cli.Handlers"
+      class: node class
+        name: $members.className
+        methods: $members.subcommandMethods
+
+rule handler-method:
+  desc "A handler method for a subcommand"
+  depends:
+    sub: node bare-command
+  body:
+    method: node method
+      name: $deps.sub.name
+      parameters: $deps.sub.parameters
+      returnType: leaf "void"
+      isPublic: leaf true
+
+rule common-handler:
+  desc "CommonHandler for commands with zero or one subcommand"
+  depends:
+    commonCommands: node bare-command[]
+  members:
+    methodsList = seq rule common-handler-method
+      cmd: $deps.commonCommands
+  body:
+    file: node file
+      path: leaf "Handlers/CommonHandler.cs"
+      namespace: leaf "Rulesage.Cli.Handlers"
+      class: node class
+        name: leaf "CommonHandler"
+        methods: $members.methodsList
+
+rule common-handler-method:
+  desc "Method in CommonHandler for a command"
+  depends:
+    cmd: node bare-command
+  body:
+    method: node method
+      name: $deps.cmd.name
+      parameters: $deps.cmd.parameters
+      returnType: leaf "void"
+      isPublic: leaf true
+
+rule di-extension-file:
+  desc "DependencyInjectionExtensions.cs file"
+  depends:
+    handlerClassNames: leaf[]
+    serviceGroups: node service-group[]
+  members:
+    addHandlersMethod = node method
+      name: leaf "AddHandlers"
+      returnType: leaf "IServiceCollection"
+      parameters: [leaf "this IServiceCollection collection"]
+      body: node method-body
+        statements: seq rule handler-registration
+          handler: $deps.handlerClassNames
+    addServiceMethods = seq rule di-add-service-method
+      group: $deps.serviceGroups
+    allMethods = derive concat-arrays
+      arrays: [[$members.addHandlersMethod], $members.addServiceMethods]
+    classAttributes = [node attribute
+      name: leaf "UsedImplicitly"
+      positionalArgs: [
+        leaf "ImplicitUseKindFlags.Access",
+        leaf "ImplicitUseTargetFlags.Members"
+      ]
+    ]
+  body:
+    file: node file
+      path: leaf "Extensions/DependencyInjectionExtensions.cs"
+      namespace: leaf "Rulesage.Cli.Extensions"
+      class: node class
+        name: leaf "DependencyInjectionExtensions"
+        attributes: $members.classAttributes
+        methods: $members.allMethods
+
+rule handler-registration:
+  desc "Registration statement for a handler class"
+  depends:
+    handlerName: leaf
+  body:
+    statement: node invocation
+      method: leaf "AddScoped"
+      typeArgs: [$deps.handlerName]
+
+rule di-add-service-method:
+  desc "An Add* method for a service group"
+  depends:
+    group: node service-group
+  members:
+    registrations = seq rule service-registration-statement
+      reg: $deps.group.registrations
+  body:
+    method: node method
+      name: derive concat-strings
+        parts: [leaf "Add", $deps.group.kind]
+      returnType: leaf "IServiceCollection"
+      parameters: [leaf "this IServiceCollection collection"]
+      body: node method-body
+        statements: $members.registrations
+
+rule service-registration-statement:
+  desc "A service registration invocation"
+  depends:
+    reg: node service-registration
+  body:
+    statement: node invocation
+      method: leaf "AddScoped"
+      typeArgs: [$deps.reg.interface, $deps.reg.implementation]
+
+rule service-to-registration:
+  desc "Map a bare-service to a service-registration"
+  depends:
+    service: node bare-service
+  body:
+    registration: node service-registration
+      interface: derive concat-strings
+        parts: [leaf "I", $deps.service.name]
+      implementation: $deps.service.name
+
+rule service-abstraction:
+  desc "Service interface file"
+  depends:
+    service: node bare-service
+  body:
+    file: node file
+      path: derive concat-strings
+        parts: [leaf "Services/Abstractions/I", $deps.service.name, leaf ".cs"]
+      namespace: leaf "Rulesage.Cli.Services.Abstractions"
+      interface: node interface
+        name: derive concat-strings
+          parts: [leaf "I", $deps.service.name]
+
+rule service-implementation:
+  desc "Service implementation file"
+  depends:
+    service: node bare-service
+  body:
+    file: node file
+      path: derive concat-strings
+        parts: [leaf "Services/Implementations/", $deps.service.name, leaf ".cs"]
+      namespace: leaf "Rulesage.Cli.Services.Implementations"
+      class: node class
+        name: $deps.service.name
+        interfaces: [derive concat-strings
+          parts: [leaf "I", $deps.service.name]
+        ]
+
+rule general-extension:
+  desc "Extension class for a given type"
+  depends:
+    target: node extension-target
+  members:
+    className = derive actual-name-for-extension
+      typeName: $deps.target.typeName
+      isInterface: $deps.target.isInterface
+    extensionMethods = seq rule extension-method-def
+      methodDef: $deps.target.methods
+      extendedType: $deps.target.typeName
+  body:
+    file: node file
+      path: derive concat-strings
+        parts: [leaf "Extensions/", $members.className, leaf ".cs"]
+      namespace: leaf "Rulesage.Cli.Extensions"
+      class: node class
+        name: $members.className
+        methods: $members.extensionMethods
+
+rule extension-method-def:
+  desc "An extension method definition"
+  depends:
+    methodDef: node extension-method
+    extendedType: leaf
+  members:
+    params = derive prepend-this-parameter
+      type: $deps.extendedType
+      parameters: $deps.methodDef.parameters
+  body:
+    method: node method
+      name: $deps.methodDef.name
+      returnType: $deps.methodDef.returnType
+      parameters: $members.params
+      isExtension: leaf true
+      isStatic: leaf true
+      isPublic: leaf true
