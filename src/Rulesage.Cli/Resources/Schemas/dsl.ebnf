@@ -7,8 +7,10 @@ AtomicType     ::= "leaf"
 ParamType      ::= AtomicType ("[]")*
 ParamDef       ::= key ":" ParamType NEWLINE
 
-ValueExpr      ::= "$args." key
+RefSourceExpr  ::= "$args." key
                  | "$subtasks." key "." key
+RefExpr        ::= RefSourceExpr ("." key)*
+ValueExpr      ::= RefExpr
                  | "leaf" stringLiteral
                  | "node" ir ArgBlock
                  | "[" (ValueExpr ("," ValueExpr)*)? "]"

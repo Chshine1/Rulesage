@@ -1,0 +1,43 @@
+﻿operation complete-ef-structure:
+  desc "Structure of all ef core members throughout the whole project"
+  params:
+    entities: node entity-bare-def[]
+    relations: node entity-relation-def[]
+  steps:
+    allNavigationProps = conv extract-navigation-props-for-entities
+      entities: $args.entities.name
+      relations: $args.relations
+    entities = map op ef-entity-class
+      bare: $args.entities
+      referenceNavigations: $subtasks.allNavigationProps.references
+      collectionNavigations: $subtasks.allNavigationProps.collections
+  outputs:
+    entities: $subtasks.entities
+
+operation ef-entity-class:
+  desc "Structure of an ef core entity class"
+  params:
+    bareDef: node entity-bare-def
+    referenceNavigations: leaf[]
+    collectionNavigations: leaf[]
+  steps:
+    primaryKey = op ef-primary-key-property
+      name: $args.bareDef.primaryKey
+    scalars = map op ef-scalar-property
+      nameAndType: $args.bareDef.scalarColumns
+    refNavigationPairs = map op ef-reference-property
+      name: $args.referenceNavigations
+    refNavigations = conv flatten-arrays
+      target: $subtasks.refNavigationPairs
+    colNavigations = map op ef-collection-property
+      name: $args.collectionNavigations
+    properties = conv flatten-arrays
+      target: [[$subtasks.primaryKey], $subtasks.scalars, $subtasks.refNavigations, $subtasks.colNavigations]   
+  outputs:
+    class: node class
+      name: $args.bareDef.name
+      attributes: [node attribute
+        name: leaf "Table"
+        positionalArgs: [$subtasks.name]
+      ]
+      properties: $subtasks.properties

@@ -65,10 +65,13 @@ module Primitive =
     let argBlock: Parser<Map<string, BlueprintValue>, IndentState> =
         attempt (skipNewline >>. indentedBlock (many argDef) |>> Map.ofList)
         <|>% Map.empty
+        
+    let refSourceExpr: Parser<RefSource, IndentState> = 
+        attempt (pstring "$args." >>. key |>> RefSource.FromParameter)
+        <|> (pstring "$subtasks." >>. key .>> pstring "." .>>. key |>> RefSource.FromSubtask)      
 
     valueExprRef.Value <-
-        attempt (pstring "$args." >>. key |>> BlueprintValue.FromParameter)
-        <|> attempt (pstring "$subtasks." >>. key .>> pstring "." .>>. key |>> BlueprintValue.FromSubtask)
+        attempt (refSourceExpr .>>. many (pstring "." >>. key) |>> BlueprintValue.Ref)
         <|> attempt (pstring "leaf" >>. spaces1 >>. stringLiteral |>> BlueprintValue.Leaf)
         <|> attempt (pstring "node" >>. spaces1 >>. ir .>>. argBlock |>> fun (nodeIr, args) -> BlueprintValue.NodeBlueprint({ id = -1; ir = nodeIr }, args ))
         <|> (between (pstring "[") (pstring "]") (sepBy (valueExpr .>> spaces) (pstring "," .>> spaces)) |>> (fun xs -> BlueprintValue.Array(Array.ofList xs)))
