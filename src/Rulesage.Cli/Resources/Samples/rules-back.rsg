@@ -1,78 +1,4 @@
-﻿rule all-extension-method-specs-for-some-type:
-  desc "All extension method specs for some type are divided into extension classes acoording to their functionalities"
-  depends:
-    targetType: leaf
-    extensionMethodSpecs: node extension-method-spec[]
-  members:
-    dividedClasses = nl "Divided extension classes, each with its functionality and corresponding method specs"
-      where:
-        classes: node extension-class-spec[]
-      given:
-        extensionMethodSpecs: $deps.extensionMethodSpecs
-    classes = seq rule extension-class
-      targetType: $deps.targetType[]
-      functionality: $members.dividedClasses.functionality
-      extensionMethodSpecs: $members.dividedClasses.extensionMethodSpecs
-  body:
-    classes: $members.classes
-
-node extension-class-spec:
-  desc "An extension class spec containing the functionality and its extension methods' specs"
-  depends:
-    functionality: leaf
-    extensionMethodSpecs: node extension-method-spec[]
-  
-rule extension-class:
-  desc "An extension class implements all its extension method specs. It is declared under `Extensions/` directory, file name matching its functinality.
-        Within the file defines a `public static class`, the class has an extension block, where all extension method specs are implemented within."
-  depends:
-    targetType: leaf
-    functionality: leaf
-    extensionMethodSpecs: node extension-method-spec[]
-  members:
-    resolvedFunctionality = derive semantic-result
-      from leaf "A PascalCase name for the functionality: {$deps.functionality}"
-    extensionClassName = derive extension-class-name
-      fromTargetType: $deps.targetType
-    extendedInstance = derive instance-name-of-given-type
-      fromGivenType: $deps.targetType
-    class = node extension-class
-      name: $members.extensionClassName
-      extendedType: $deps.targetType
-      extendedInstance: $members.extendedInstance
-      extensionMethods: seq rule extension-method
-        extendedType: $deps.targetType[]
-        extendedInstance: $deps.extendedInstance[]
-        spec: $deps.extensionMethodSpecs
-    fileContent = derive serialized-value
-      from: $members.class
-  body:
-    file: node cs-file
-      path: leaf "Extensions/{$members.resolvedFunctionality}Extensions.cs"
-      namespace: leaf "Rulesage.Cli.Extensions"
-      content: $members.fileContent
-  
-rule extension-method:
-  desc "An extension method takes the instance to be extended externally and operates it, not declaring `this` parameter.
-        It should not rely on any external state like field or property, etc."
-  depends:
-    extendedType: leaf
-    extendedInstance: leaf
-    spec: leaf
-  members:
-    method = nl "An extension method for {$deps.extendedType} implementing the given spec.
-                 Instance to be extended cannot be passed by `this` argument, use `{$deps.extendedInstance}` directly.
-                 It should not rely on any external state like field or property, etc."
-      where:
-        method: node method
-      given:
-        spec: $deps.spec
-  body:
-    method: $members.method
-
-
-
-rule cli-project:
+﻿rule cli-project:
   desc "Full structure and conventions of a Rulesage.Cli project"
   depends:
     projectName: leaf
@@ -124,10 +50,9 @@ rule program-cs:
   members:
     commandSteps = seq rule primary-command-registration-step
       command: $deps.primaryCommands
-    steps = derive flattened-array
-      from: [
-        [node step 
-        description: leaf "build-host"],
+    steps = derive concat-arrays
+      arrays: [
+        [node step description: leaf "build-host"],
         [node step description: leaf "resolve-service-provider"],
         [node step description: leaf "create-root-command"],
         $members.commandSteps,
@@ -146,7 +71,6 @@ rule program-cs:
         methods: [node method
           name: leaf "Main"
           returnType: leaf "int"
-          modifiers: [leaf "public", leaf "static"]
           parameters: [leaf "string[] args"]
           body: $members.steps
         ]
@@ -159,8 +83,8 @@ rule primary-command-registration-step:
     subSteps = seq rule subcommand-registration-step
       subcommand: $deps.command.subcommands
   body:
-    steps: derive flattened-array
-      from: [
+    steps: derive concat-arrays
+      arrays: [
         [node step description: leaf "declare-primary-command", commandName: $deps.command.name],
         $members.subSteps
       ]
@@ -173,8 +97,8 @@ rule subcommand-registration-step:
     nestedSteps = seq rule subcommand-registration-step
       subcommand: $deps.subcommand.subcommands
   body:
-    steps: derive flattened-array
-      from: [
+    steps: derive concat-arrays
+      arrays: [
         [node step description: leaf "register-subcommand", name: $deps.subcommand.name],
         $members.nestedSteps
       ]
@@ -338,3 +262,41 @@ rule service-implementation:
         interfaces: [derive concat-strings
           parts: [leaf "I", $deps.service.name]
         ]
+
+rule general-extension:
+  desc "Extension class for a given type"
+  depends:
+    target: node extension-target
+  members:
+    className = derive actual-name-for-extension
+      typeName: $deps.target.typeName
+      isInterface: $deps.target.isInterface
+    extensionMethods = seq rule extension-method-def
+      methodDef: $deps.target.methods
+      extendedType: $deps.target.typeName
+  body:
+    file: node file
+      path: derive concat-strings
+        parts: [leaf "Extensions/", $members.className, leaf ".cs"]
+      namespace: leaf "Rulesage.Cli.Extensions"
+      class: node class
+        name: $members.className
+        methods: $members.extensionMethods
+
+rule extension-method-def:
+  desc "An extension method definition"
+  depends:
+    methodDef: node extension-method
+    extendedType: leaf
+  members:
+    params = derive prepend-this-parameter
+      type: $deps.extendedType
+      parameters: $deps.methodDef.parameters
+  body:
+    method: node method
+      name: $deps.methodDef.name
+      returnType: $deps.methodDef.returnType
+      parameters: $members.params
+      isExtension: leaf true
+      isStatic: leaf true
+      isPublic: leaf true
