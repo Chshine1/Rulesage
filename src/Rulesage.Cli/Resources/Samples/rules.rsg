@@ -1,18 +1,26 @@
-﻿rule all-extension-method-specs-for-some-type:
+﻿rule service-collection-extensions
+  desc "All extension methods for `IServiceCollection` are logic of DI registrations"
+  members:
+    specs = nl "All extension"
+      where:
+        specs node extension-method-spec[]
+  body:
+    specs: node extension-class-spec
+      functionality: leaf "DependencyInjection"
+      extensionMethodSpecs: $members.specs
+
+rule all-extension-method-specs-for-some-type:
   desc "All extension method specs for some type are divided into extension classes acoording to their functionalities"
   depends:
     targetType: leaf
-    extensionMethodSpecs: node extension-method-spec[]
   members:
-    dividedClasses = nl "Divided extension classes, each with its functionality and corresponding method specs"
+    extensionClassSpecs: nl "All extension method specs for the extended type {$deps.targetType}, divided into extension classes, each with a functionality"
       where:
-        classes: node extension-class-spec[]
-      given:
-        extensionMethodSpecs: $deps.extensionMethodSpecs
+        specs: node extension-class-spec[]
     classes = seq rule extension-class
       targetType: $deps.targetType[]
-      functionality: $members.dividedClasses.functionality
-      extensionMethodSpecs: $members.dividedClasses.extensionMethodSpecs
+      functionality: $members.extensionClassSpecs.functionality
+      extensionMethodSpecs: $members.extensionClassSpecs.extensionMethodSpecs
   body:
     classes: $members.classes
 
