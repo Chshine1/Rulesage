@@ -1,106 +1,91 @@
 ﻿rule service-collection-extensions
-  desc "All extension method specs for `IServiceCollection`. They only contain logic of DI registrations"
-  provides:
-    specs = nl "The only extension method is AddHandlers() which registers command handlers"
-      where:
-        specs node extension-method-spec[]
-  body:
-    specs: node extension-class-spec
-      functionality: "DependencyInjection"
-      extensionMethodSpecs: $members.specs
-
-rule all-extension-method-specs:
-  for:
-    targetType: leaf
   must be:
-    classes: $given.classes
+    node extension-class-spec
+      functionality: "DependencyInjection"
+      extensionMethodSpecs: $given.specs
   given:
-    extensionClassSpecs = nl "All extension method specs for the extended type {$targetType}, divided into extension classes, each with a functionality"
-      of type:
-        specs: node extension-class-spec[]
-    classes = seq rule extension-class
-      targetType: $targetType[]
+    specs = ref "The only extension method is AddHandlers() which registers command handlers"
+      of type: node extension-method-spec[]
+  in short: "All extension method specs for `IServiceCollection`. They only contain logic of DI registrations"
+
+rule all-extension-method-specs
+  for:
+    targetType: literal
+  must be:
+    seq rule extension-class
+      targetType: $for.targetType[]
       functionality: $given.extensionClassSpecs.functionality
       extensionMethodSpecs: $given.extensionClassSpecs.extensionMethodSpecs
+  given:
+    extensionClassSpecs = ref "All extension method specs for the extended type {$targetType}, divided into extension classes, each with a functionality"
+      of type: node extension-class-spec[]
   in short: "All extension method specs for some type are divided into extension classes acoording to their functionalities"
-
-node extension-class-spec:
-  desc "An extension class spec containing the functionality and its extension methods' specs"
-  depends:
-    functionality: leaf
-    extensionMethodSpecs: node extension-method-spec[]
   
-rule extension-class:
-  desc "An extension class implements all its extension method specs. It is declared under `Extensions/` directory, file name matching its functinality.
-        Within the file defines a `public static class`, the class has an extension block, where all extension method specs are implemented within."
-  depends:
-    targetType: leaf
-    functionality: leaf
+rule extension-class
+  for:
+    targetType: literal
+    functionality: literal
     extensionMethodSpecs: node extension-method-spec[]
-  members:
-    resolvedFunctionality = derive semantic-result
-      from: "A PascalCase name for the functionality: {$deps.functionality}"
-    extensionClassName = derive extension-class-name
-      fromTargetType: $deps.targetType
-    extendedInstance = derive instance-name-of-given-type
-      fromGivenType: $deps.targetType
-    classAttributes: nl "All class attributes for the extension class {$members.extensionClassName}"
-      with: node class-attribute[]
-    class = node extension-class
-      name: $members.extensionClassName
-      extendedType: $deps.targetType
-      extendedInstance: $members.extendedInstance
-      attributes: $members.classAttributes
-      extensionMethods: seq rule extension-method
-        extendedType: $deps.targetType[]
-        extendedInstance: $deps.extendedInstance[]
-        spec: $deps.extensionMethodSpecs
-    fileContent = derive serialized-value
-      from: $members.class
-  body:
-    file: node cs-file
-      path: "Extensions/{$members.resolvedFunctionality}Extensions.cs"
+  must be: 
+    node cs-file
+      path: "Extensions/{$given.resolvedFunctionality}Extensions.cs"
       namespace: "Rulesage.Cli.Extensions"
-      content: $members.fileContent
+      content:
+        derive serialized-value
+          from: $given.class
+  given:
+    resolvedFunctionality = derive semantic-result
+      from: "A PascalCase name for the functionality: {$for.functionality}"
+    extensionClassName = derive extension-class-name
+      fromTargetType: $for.targetType
+    extendedInstance = derive instance-name-of-given-type
+      fromGivenType: $for.targetType
+    class = node extension-class
+      name: $given.extensionClassName
+      extendedType: $for.targetType
+      extendedInstance: $given.extendedInstance
+      attributes:
+        ref "All class attributes for the extension class {$given.extensionClassName}"
+          of type: node class-attribute[]
+      extensionMethods: seq rule extension-method
+        extendedType: $for.targetType[]
+        extendedInstance: $for.extendedInstance[]
+        spec: $for.extensionMethodSpecs
+  in short:
+    "An extension class implements all its extension method specs. It is declared under `Extensions/` directory, file name matching its functinality.
+    Within the file defines a `public static class`, the class has an extension block, where all extension method specs are implemented within."
   
 rule extension-method:
-  desc "An extension method takes the instance to be extended externally and operates it, not declaring `this` parameter.
-        It should not rely on any external state like field or property, etc."
-  depends:
-    extendedType: leaf
-    extendedInstance: leaf
-    spec: leaf
-  members:
-    method = nl "An extension method for {$deps.extendedType} implementing the given spec.
-                 Instance to be extended cannot be passed by `this` argument, use `{$deps.extendedInstance}` directly.
-                 It should not rely on any external state like field or property, etc."
-      where:
-        method: node method
-      given:
-        spec: $deps.spec
-  body:
-    method: $members.method
+  for:
+    extendedType: literal
+    extendedInstance: literal
+    spec: literal
+  must be: $given.method
+  given:
+    method = 
+      ref "An extension method for {$for.extendedType} implementing: {$for.spec}. Instance to be extended not passed by `this` argument, `{$for.extendedInstance}` is used directly."
+        of type: node method
+  in short:
+    "An extension method takes the instance to be extended externally and operates it, not declaring `this` parameter.
+    It should not rely on any external state like field or property, etc."
     
 rule method-body:
-  desc ""
-  depends:
-    methodSpec: leaf
-  members:
-    requirements: nl "Requirements for generating the method body of the given spec: {$deps.methodSpec}"
-      with:
-        requirements: leaf
+  for:
+    methodSpec: literal
+  must be: $members.methodBody
+  given:
+    requirements: ref "Requirements for generating the method body of the given spec: {$deps.methodSpec}"
+      of type: literal
     methodBody: derive semantic-result
-      of: "A C# .NET plain method body matching spec: {$deps.methodSpec}, with requirements: {$members.requirements}"
-  body:
-    methodBody: $members.methodBody
+      from: "A C# .NET plain method body matching spec: {$deps.methodSpec}, with requirements: {$members.requirements}"
+  in short: ""
     
 rule di-extension-method-body
-  desc "A DI extension method should not contain any state or computational logic, just pure registration, and use TryAdd for idempotence"
-  body:
-    requirement: "A DI extension method should not contain any state or computational logic, just pure registration, and use TryAdd for idempotence"
+  must be: "A DI extension method should not contain any state or computational logic, just pure registration, and use TryAdd for idempotence"
+  in short: "A DI extension method should not contain any state or computational logic, just pure registration, and use TryAdd for idempotence"
 
 rule service-collection-extension-class-used-implicitly
-  desc "The extension class for IServiceCollection should be marked with UsedImplicitly attribute, indicating that return values are used"
-  body:
-    attribute: node attribute
-      positionalParameters: [leaf "ImplicitUseKindFlags.Access", leaf "ImplicitUseTargetFlags.Members"]
+  must be:
+    node attribute
+      positionalParameters: ["ImplicitUseKindFlags.Access", "ImplicitUseTargetFlags.Members"]
+  in short: "The extension class for IServiceCollection should be marked with UsedImplicitly attribute, indicating that return values are used"
