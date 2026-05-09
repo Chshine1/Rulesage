@@ -1,4 +1,71 @@
-﻿rule service-collection-extensions
+﻿rule program-entrypoint
+  must be:
+    node cs-file
+      path: "Program.cs"
+      namespace: "Rulesage.Cli"
+      content:
+        derive serialized-value
+          from: $given.class
+  given:
+    mainFunction = ref "Project main function"
+      of type: node method
+    class = node class
+      name: "Program"
+      access: "public"
+      static: "false"
+      attributes: ["UsedImplicitly"]
+      fields: []
+      properties: []
+      methods: [$given.mainFunction]
+  in short: ""
+  
+rule sequenced-method-body
+  for:
+    methodSpec: literal
+    splitPieces: literal[]
+  must be:
+    derive concat-literal-array
+      from: $given.implementations
+  given:
+    initialContext = ref "Initial variables in scope: parameters of the method described by {$for.methodSpec}"
+      of type: literal[]
+    piecewiseSpecs = ref "The sequential code pieces specs, each with its available vars in the scope, a short description and what it produces for following pieces to do. They refine a method spec {$for.methodSpec} split into {$for.splitPieces}"
+      of type: node code-piece-spec[]
+    implementations = seq rule code-piece-spec-implementation
+      description: $given.piecewiseSpecs.description
+      expectedProductions: $given.piecewiseSpecs.expectedProductions
+      availableVariables: $given.piecewiseSpecs.availableVariables
+  in short:
+    "A method body composed of ordered code pieces that share variable context. Each piece can see variables
+    declared in previous pieces and the method parameters."
+    
+rule code-piece-spec-implementation
+  for:
+    description: literal
+    expectedProductions: literal[]
+    availableVariables: literal[]
+  must be:
+    ref "A C# code piece implementing: {$for.description}, producing: ${for.expectedProductions}, where only available vars are: {$for.availableVariables}"
+      of type: literal
+  in short:
+    "A single step inside a method, defined by its intent and requirements. It receives currently
+    available variables and may produce new ones that become visible to subsequent steps."
+  
+rule project-main-function
+  must be:
+    node method
+      name: "Main"
+      access: "public"
+      static: "true"
+      returnType: "int"
+      args: "string[] args"
+      body: $given.methodBody
+  given:
+    methodBody = rule sequenced-method-body
+      methodSpec: "The main function with parameter `string[] args` of the cli project which builds an IHost, registers commands and executes"
+      splitPieces: ["build an IHost", "build commands", "parse args and execute"]
+
+rule service-collection-extensions
   must be:
     node extension-class-spec
       functionality: "DependencyInjection"
@@ -34,8 +101,8 @@ rule extension-class
         derive serialized-value
           from: $given.class
   given:
-    resolvedFunctionality = derive semantic-result
-      from: "A PascalCase name for the functionality: {$for.functionality}"
+    resolvedFunctionality = ref "A PascalCase name for the functionality: {$for.functionality}"
+      of type: literal
     extensionClassName = derive extension-class-name
       fromTargetType: $for.targetType
     extendedInstance = derive instance-name-of-given-type
@@ -76,8 +143,8 @@ rule method-body:
   given:
     requirements: ref "Requirements for generating the method body of the given spec: {$deps.methodSpec}"
       of type: literal
-    methodBody: derive semantic-result
-      from: "A C# .NET plain method body matching spec: {$deps.methodSpec}, with requirements: {$members.requirements}"
+    methodBody: ref "A C# .NET plain method body matching spec: {$deps.methodSpec}, with requirements: {$members.requirements}"
+      of type: literal
   in short: ""
     
 rule di-extension-method-body
