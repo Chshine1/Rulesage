@@ -1,6 +1,6 @@
 ﻿rule service-collection-extensions
   desc "All extension method specs for `IServiceCollection`. They only contain logic of DI registrations"
-  members:
+  provides:
     specs = nl "The only extension method is AddHandlers() which registers command handlers"
       where:
         specs node extension-method-spec[]
@@ -9,20 +9,20 @@
       functionality: "DependencyInjection"
       extensionMethodSpecs: $members.specs
 
-rule all-extension-method-specs-for-some-type:
-  desc "All extension method specs for some type are divided into extension classes acoording to their functionalities"
-  depends:
+rule all-extension-method-specs:
+  for:
     targetType: leaf
-  members:
-    extensionClassSpecs: nl "All extension method specs for the extended type {$deps.targetType}, divided into extension classes, each with a functionality"
-      where:
+  must be:
+    classes: $given.classes
+  given:
+    extensionClassSpecs = nl "All extension method specs for the extended type {$targetType}, divided into extension classes, each with a functionality"
+      of type:
         specs: node extension-class-spec[]
     classes = seq rule extension-class
-      targetType: $deps.targetType[]
-      functionality: $members.extensionClassSpecs.functionality
-      extensionMethodSpecs: $members.extensionClassSpecs.extensionMethodSpecs
-  body:
-    classes: $members.classes
+      targetType: $targetType[]
+      functionality: $given.extensionClassSpecs.functionality
+      extensionMethodSpecs: $given.extensionClassSpecs.extensionMethodSpecs
+  in short: "All extension method specs for some type are divided into extension classes acoording to their functionalities"
 
 node extension-class-spec:
   desc "An extension class spec containing the functionality and its extension methods' specs"
