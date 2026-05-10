@@ -8,10 +8,14 @@
     <ItemGroup>
         <Compile Include="Types\Domain\Primitive.fs" />
         <Compile Include="Types\Domain\BlueprintValue.fs" />
-        <Compile Include="Types\Domain\OperationBlueprint.fs" />
+        <Compile Include="Types\Domain\Rule.fs" />
         <Compile Include="Types\Composition\CompositionContext.fs" />
         <Compile Include="Types\Composition\SemanticOperation.fs" />
         <Compile Include="Grammar\Domain\Primitive.fs" />
+        <Compile Include="Grammar\ParseContext.fs" />
+        <Compile Include="Grammar\AST.fs" />
+        <Compile Include="Grammar\Parsers.fs" />
+        <Compile Include="Grammar\Domain.fs" />
         <EmbeddedResource Include="Migrations\*.sql" />
     </ItemGroup>
 

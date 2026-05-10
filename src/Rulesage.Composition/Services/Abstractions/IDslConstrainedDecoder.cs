@@ -6,7 +6,7 @@ namespace Rulesage.Composition.Services.Abstractions;
 
 public interface IDslConstrainedDecoder
 {
-    Task<OperationBlueprint> DecodeAsync(
+    Task<Rule> DecodeAsync(
         SemanticOperation semanticOperation,
         CompositionContext compositionContext,
         Grammar grammar,

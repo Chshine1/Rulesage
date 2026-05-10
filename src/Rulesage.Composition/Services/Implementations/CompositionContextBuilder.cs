@@ -11,8 +11,8 @@ public class CompositionContextBuilder : ICompositionContextBuilder
 {
     public Task<CompositionContext> BuildAsync(
         Node[] availableNodes,
-        Converter[] availableConverters,
-        OperationSignature[] prefetchedOperations,
+        Derivation[] availableConverters,
+        RuleSignature[] prefetchedOperations,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult(new CompositionContext(

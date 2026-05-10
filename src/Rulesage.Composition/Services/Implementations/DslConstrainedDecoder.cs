@@ -9,7 +9,7 @@ namespace Rulesage.Composition.Services.Implementations;
 
 public class DslConstrainedDecoder(ILlmService llm, JsonSerializerOptions jsonOptions) : IDslConstrainedDecoder
 {
-    public async Task<OperationBlueprint> DecodeAsync(
+    public async Task<Rule> DecodeAsync(
         SemanticOperation semanticOperation,
         CompositionContext compositionContext,
         Grammar grammar,
@@ -21,7 +21,7 @@ public class DslConstrainedDecoder(ILlmService llm, JsonSerializerOptions jsonOp
         // TODO: Use GCD here
         var rawJson = await llm.CompleteAsync(prompt, cancellationToken);
 
-        return JsonSerializer.Deserialize<OperationBlueprint>(rawJson, jsonOptions)
+        return JsonSerializer.Deserialize<Rule>(rawJson, jsonOptions)
                ?? throw new InvalidOperationException("GCD did not return a valid DslCompositionIr.");
     }
 }

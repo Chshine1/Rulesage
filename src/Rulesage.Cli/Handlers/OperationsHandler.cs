@@ -44,7 +44,7 @@ public class OperationsHandler(
     }
 
 
-    private static void PrintTable(IEnumerable<OperationSignature> ops)
+    private static void PrintTable(IEnumerable<RuleSignature> ops)
     {
         var header = $"{"ID",-4} {"IR",-12} {"Description",-25} {"Level",-7} {"Params/Out",-12}";
         ConsoleHelper.WriteLineColored(ConsoleColor.Cyan, header);
@@ -61,7 +61,7 @@ public class OperationsHandler(
         }
     }
 
-    private static void PrintDetailed(OperationSignature op)
+    private static void PrintDetailed(RuleSignature op)
     {
         ConsoleHelper.WriteLineColored(ConsoleColor.Yellow, $"▸ Operation: {op.id.id} | ir='{op.id.ir}'");
         Console.WriteLine($"  Description: {op.description}");

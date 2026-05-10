@@ -5,7 +5,7 @@ namespace Rulesage.Retrieval;
 
 public interface IOperationRetrievalService
 {
-    Task<OperationSignature[]> RetrieveAsync(
+    Task<RuleSignature[]> RetrieveAsync(
         string nlTask,
         float? targetLevel = null,
         CancellationToken cancellationToken = default);

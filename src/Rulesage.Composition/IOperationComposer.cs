@@ -4,8 +4,8 @@ namespace Rulesage.Composition;
 
 public interface IOperationComposer
 {
-    Task<OperationBlueprint> ComposeAsync(
+    Task<Rule> ComposeAsync(
         string nlTask,
-        OperationSignature[] prefetchedOperations,
+        RuleSignature[] prefetchedOperations,
         CancellationToken cancellationToken = default);
 }

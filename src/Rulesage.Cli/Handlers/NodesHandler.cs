@@ -66,7 +66,7 @@ public partial class NodesHandler(
         {
             if (!p.Identifier.HasValue)
             {
-                paramsMap.Add(p.Key, p.IsList ? ParamType.NewArray(ParamType.Leaf) : ParamType.Leaf);
+                paramsMap.Add(p.Key, p.IsList ? ParamType.NewArray(ParamType.Literal) : ParamType.Literal);
                 continue;
             }
 

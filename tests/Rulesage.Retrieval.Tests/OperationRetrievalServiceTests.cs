@@ -22,7 +22,7 @@ public class OperationRetrievalServiceTests
     }
 
     private static Mock<IOperationRepository> CreateRepositoryMock(
-        IEnumerable<(OperationSignature, float)> candidatesToReturn)
+        IEnumerable<(RuleSignature, float)> candidatesToReturn)
     {
         var mock = new Mock<IOperationRepository>();
         mock.Setup(r => r.FindOrderByCosineDistanceAsync(
@@ -59,8 +59,8 @@ public class OperationRetrievalServiceTests
 
     private static OptionsWrapper<RetrievalOptions> WrapOptions(RetrievalOptions options) => new(options);
 
-    private static OperationSignature[] ComputeExpectedTopK(
-        (OperationSignature, float)[] coarseCandidates,
+    private static RuleSignature[] ComputeExpectedTopK(
+        (RuleSignature, float)[] coarseCandidates,
         Dictionary<string, float> idfMap,
         float tau,
         RetrievalOptions options)
@@ -88,7 +88,7 @@ public class OperationRetrievalServiceTests
             .ToArray();
     }
 
-    private static OperationSignature CreateOp(int id, string desc, float level) =>
+    private static RuleSignature CreateOp(int id, string desc, float level) =>
         new(new Identifier(id, ""), desc, level, MapModule.Empty<string, ParamType>(),
             MapModule.Empty<string, ParamType>());
 

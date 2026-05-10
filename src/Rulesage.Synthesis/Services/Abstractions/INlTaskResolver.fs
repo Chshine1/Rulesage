@@ -5,4 +5,4 @@ open System.Threading.Tasks
 open Rulesage.Common.Types.Domain
 
 type INlTaskResolver =
-    abstract member ResolveAsync: cancellationToken: CancellationToken -> nlTask: string -> Task<OperationBlueprint>
+    abstract member ResolveAsync: cancellationToken: CancellationToken -> nlTask: string -> Task<Rule>

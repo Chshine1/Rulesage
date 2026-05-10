@@ -10,9 +10,9 @@ public class OperationComposer(
     IDslConstrainedDecoder gcd)
     : IOperationComposer
 {
-    public async Task<OperationBlueprint> ComposeAsync(
+    public async Task<Rule> ComposeAsync(
         string nlTask,
-        OperationSignature[] prefetchedOperations,
+        RuleSignature[] prefetchedOperations,
         CancellationToken cancellationToken = default)
     {
         var context = await contextBuilder.BuildAsync([], [], prefetchedOperations, cancellationToken);

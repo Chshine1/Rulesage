@@ -1,158 +1,141 @@
-﻿rule program-entrypoint
-  must be:
-    node cs-file
-      path: "Program.cs"
-      namespace: "Rulesage.Cli"
-      content:
-        derive serialized-value
-          from: $given.class
+﻿@""
+rule program-entrypoint
   given:
-    mainFunction = ref "Project main function"
-      of type: node method
-    class = node class
-      name: "Program"
-      access: "public"
-      static: "false"
-      attributes: ["UsedImplicitly"]
-      fields: []
-      properties: []
-      methods: [$given.mainFunction]
-  in short: ""
-  
+    mainFunction: ref(node method) "Project main function"
+    class: node class with
+      name = "Program", access = "public", static = "false",
+      attributes = ["UsedImplicitly"], fields = [], properties = [],
+      methods = [$given.mainFunction]
+    fileContent: result of serialize-value where toBeSerialized = $given.class
+  must be: node cs-file with
+    path = "Program.cs",
+    namespace = "Rulesage.Cli",
+    content = $given.fileContent
+
+@"A method body composed of ordered code pieces that share variable context. Each piece can see variables declared in previous pieces and the method parameters."
 rule sequenced-method-body
-  for:
-    methodSpec: literal
-    splitPieces: literal[]
-  must be:
-    derive concat-literal-array
-      from: $given.implementations
+  for: methodSpec(literal), splitPieces(literal[])
   given:
-    initialContext = ref "Initial variables in scope: parameters of the method described by {$for.methodSpec}"
-      of type: literal[]
-    piecewiseSpecs = ref "The sequential code pieces specs, each with its available vars in the scope, a short description and what it produces for following pieces to do. They refine a method spec {$for.methodSpec} split into {$for.splitPieces}"
-      of type: node code-piece-spec[]
-    implementations = seq rule code-piece-spec-implementation
-      description: $given.piecewiseSpecs.description
-      expectedProductions: $given.piecewiseSpecs.expectedProductions
-      availableVariables: $given.piecewiseSpecs.availableVariables
-  in short:
-    "A method body composed of ordered code pieces that share variable context. Each piece can see variables
-    declared in previous pieces and the method parameters."
-    
+    initialContext: ref(literal[]) "Initial variables in scope: parameters of the method described by {$for.methodSpec}"
+    piecewiseSpecs: ref(node code-piece-spec[]) "The sequential code pieces specs, each with its available vars in the scope, a short description and what it produces for following pieces to do. They refine a method spec {$for.methodSpec} split into {$for.splitPieces}"
+    implementations: seq satisfying code-piece-spec-implementation where
+      description = iter $given.piecewiseSpecs.description,
+      expectedProductions = iter $given.piecewiseSpecs.expectedProductions,
+      availableVariables = iter $given.piecewiseSpecs.availableVariables
+  must be: result of concat-string where stringArray = $given.implementations
+
+@"A single step inside a method, defined by its intent and requirements. It receives currently available variables and may produce new ones that become visible to subsequent steps."
 rule code-piece-spec-implementation
-  for:
-    description: literal
-    expectedProductions: literal[]
-    availableVariables: literal[]
-  must be:
-    ref "A C# code piece implementing: {$for.description}, producing: ${for.expectedProductions}, where only available vars are: {$for.availableVariables}"
-      of type: literal
-  in short:
-    "A single step inside a method, defined by its intent and requirements. It receives currently
-    available variables and may produce new ones that become visible to subsequent steps."
-  
+  for: description(literal), expectedProductions(literal[]), availableVariables(literal[])
+  must be: ref(literal) "A C# code piece implementing: {$for.description}, producing: ${for.expectedProductions}, where only available vars are: {$for.availableVariables}"
+
+@""
 rule project-main-function
-  must be:
-    node method
-      name: "Main"
-      access: "public"
-      static: "true"
-      returnType: "int"
-      args: "string[] args"
-      body: $given.methodBody
   given:
-    methodBody = rule sequenced-method-body
-      methodSpec: "The main function with parameter `string[] args` of the cli project which builds an IHost, registers commands and executes"
-      splitPieces: ["build an IHost", "build commands", "parse args and execute"]
+    methodBody: satisfying sequenced-method-body where
+      methodSpec = "The main function with parameter `string[] args` of the cli project which builds an IHost, registers commands and executes"
+      splitPieces = ["build an IHost", "build commands", "parse args and execute"]
+  must be: node method with name = "Main", access = "public", static = "true",
+    returnType = "int", args = "string[] args",
+    body = $given.methodBody
 
+@""
+rule domain-aggregates
+  given: 
+    ruleAggregate: node domain-aggregate with name = "rule", description = ""
+    nodeAggregate: node domain-aggregate with name = "node", description = ""
+    actionAggregate: node domain-aggregate with name = "action", description = ""
+  must be: [$given.ruleAggregate, $given.nodeAggregate, $given.actionAggregate]
+
+@"Hierarchical command blueprint: root -> primary (one per aggregate + 'common') -> subcommands. Each subcommand represents a complete operation (method) invoked after the primary command name."
+rule cli-commands-structure
+  given:
+    domainAggregates: ref(literal[]) "All domain aggregates in the project"
+    aggregateCommandSpecs: ref(node primary-command-spec[]) "Domain aggregates primary commands' specs for commands {$given.domaainAggregates}"
+    commonCommandSpec: ref(node primary-command-spec) "The common primary command's spec handling all scattered commands not belonging to any domain aggregate"
+    rootCommandSpec: ref(node root-command-spec) "Root command spec representing the application itself"
+    primaryCommands: result of flatten-array where arr = [$given.aggregateCommandSpecs, [$given.commonCommandSpec]]
+  must be: node cli-commands-structure with
+    root = $given.rootCommandSpec,
+    primaries = $given.primaryCommands
+
+@""
+rule primary-command-handler
+  for: primaryCommand(primary-command-spec)
+  given:
+    handlerName: ref(literal) "Pascal case name for the handler for primary command {$for.primaryCommand.name}, as `<pl. AggregateType>Handler` or `CommonHandler`"
+    class:
+    content: result of serialize-value where toBeSerialized = $given.class
+  must be: node cs-file with
+    path = "Handlers/{$given.handlerName}.cs",
+    namespace = "Rulesage.Cli.Handlers",
+    content = $given.content
+
+@"The cli uses System.CommandLine, the final part of main function parses the root command of type `RootCommand`, with entrance args and invokes it."
+rule cli-execution
+  for: rootCommandVarName(literal), mainFunctionArgsVarName(literal)
+  must be: "{$for.rootCommandVarName}.Parse({$for.mainFunctionArgsVarName}).Invoke()"
+
+@"All extension method specs for `IServiceCollection`. They only contain logic of DI registrations"
 rule service-collection-extensions
-  must be:
-    node extension-class-spec
-      functionality: "DependencyInjection"
-      extensionMethodSpecs: $given.specs
   given:
-    specs = ref "The only extension method is AddHandlers() which registers command handlers"
-      of type: node extension-method-spec[]
-  in short: "All extension method specs for `IServiceCollection`. They only contain logic of DI registrations"
+    specs: ref(node extension-method-spec[]) "The only extension method is AddHandlers() which registers command handlers"
+  must be: node extension-class-spec with
+    functionality = "DependencyInjection",
+    extensionMethodSpecs = $given.specs
 
+@"All extension method specs for some type are divided into extension classes acoording to their functionalities"
 rule all-extension-method-specs
-  for:
-    targetType: literal
-  must be:
-    seq rule extension-class
-      targetType: $for.targetType[]
-      functionality: $given.extensionClassSpecs.functionality
-      extensionMethodSpecs: $given.extensionClassSpecs.extensionMethodSpecs
+  for: targetType(literal)
   given:
-    extensionClassSpecs = ref "All extension method specs for the extended type {$targetType}, divided into extension classes, each with a functionality"
-      of type: node extension-class-spec[]
-  in short: "All extension method specs for some type are divided into extension classes acoording to their functionalities"
-  
+    extensionClassSpecs: ref(node extension-class-spec[]) "All extension method specs for the extended type {$targetType}, divided into extension classes, each with a functionality"
+  must be: seq satisfying extension-class where
+    targetType = $for.targetType,
+    functionality = iter $given.extensionClassSpecs.functionality,
+    extensionMethodSpecs = iter $given.extensionClassSpecs.extensionMethodSpecs
+
+@"An extension class implements all its extension method specs. It is declared under `Extensions/` directory, file name matching its functinality. Within the file defines a `public static class`, the class has an extension block, where all extension method specs are implemented within."
 rule extension-class
-  for:
-    targetType: literal
-    functionality: literal
-    extensionMethodSpecs: node extension-method-spec[]
-  must be: 
-    node cs-file
-      path: "Extensions/{$given.resolvedFunctionality}Extensions.cs"
-      namespace: "Rulesage.Cli.Extensions"
-      content:
-        derive serialized-value
-          from: $given.class
+  for: targetType(literal), functionality(literal), extensionMethodSpecs(node extension-method-spec[])
   given:
-    resolvedFunctionality = ref "A PascalCase name for the functionality: {$for.functionality}"
-      of type: literal
-    extensionClassName = derive extension-class-name
-      fromTargetType: $for.targetType
-    extendedInstance = derive instance-name-of-given-type
-      fromGivenType: $for.targetType
-    class = node extension-class
-      name: $given.extensionClassName
-      extendedType: $for.targetType
-      extendedInstance: $given.extendedInstance
-      attributes:
-        ref "All class attributes for the extension class {$given.extensionClassName}"
-          of type: node class-attribute[]
-      extensionMethods: seq rule extension-method
-        extendedType: $for.targetType[]
-        extendedInstance: $for.extendedInstance[]
-        spec: $for.extensionMethodSpecs
-  in short:
-    "An extension class implements all its extension method specs. It is declared under `Extensions/` directory, file name matching its functinality.
-    Within the file defines a `public static class`, the class has an extension block, where all extension method specs are implemented within."
-  
-rule extension-method:
-  for:
-    extendedType: literal
-    extendedInstance: literal
-    spec: literal
+    resolvedFunctionality: ref(literal) "A PascalCase name for the functionality: {$for.functionality}"
+    extensionClassName: result of extension-class-name where fromTargetType = $for.targetType
+    extendedInstance: result of instance-name-of-given-type where fromGivenType = $for.targetType
+    extensionMethods: seq satisfying extension-method where
+      extendedType = $for.targetType,
+      extendedInstance = $for.extendedInstance,
+      spec = iter $for.extensionMethodSpecs
+    class: node extension-class with
+      name = $given.extensionClassName,
+      extendedType = $for.targetType,
+      extendedInstance = $given.extendedInstance,
+      attributes = ref(node class-attribute[]) "All class attributes for the extension class {$given.extensionClassName}"
+    fileContent: result of serialize-value where target = $given.class
+  must be: node cs-file with
+    path = "Extensions/{$given.resolvedFunctionality}Extensions.cs",
+    namespace = "Rulesage.Cli.Extensions",
+    content = $given.fileContent
+
+@"An extension method takes the instance to be extended externally and operates it, not declaring `this` parameter. It should not rely on any external state like field or property, etc."
+rule extension-method
+  for: extendedType(literal), extendedInstance(literal), spec(literal)
+  given:
+    method: ref(node method) "An extension method for {$for.extendedType} implementing: {$for.spec}. Instance to be extended not passed by `this` argument, `{$for.extendedInstance}` is used directly."
   must be: $given.method
+
+@""
+rule method-body
+  for: methodSpec(literal)
   given:
-    method = 
-      ref "An extension method for {$for.extendedType} implementing: {$for.spec}. Instance to be extended not passed by `this` argument, `{$for.extendedInstance}` is used directly."
-        of type: node method
-  in short:
-    "An extension method takes the instance to be extended externally and operates it, not declaring `this` parameter.
-    It should not rely on any external state like field or property, etc."
-    
-rule method-body:
-  for:
-    methodSpec: literal
+    requirements: ref(literal) "Requirements for generating the method body of the given spec: {$deps.methodSpec}"
+    methodBody: ref(literal) "A C# .NET plain method body matching spec: {$deps.methodSpec}, with requirements: {$members.requirements}"
   must be: $members.methodBody
-  given:
-    requirements: ref "Requirements for generating the method body of the given spec: {$deps.methodSpec}"
-      of type: literal
-    methodBody: ref "A C# .NET plain method body matching spec: {$deps.methodSpec}, with requirements: {$members.requirements}"
-      of type: literal
-  in short: ""
-    
+
+@"A DI extension method should not contain any state or computational logic, just pure registration, and use TryAdd for idempotence"
 rule di-extension-method-body
   must be: "A DI extension method should not contain any state or computational logic, just pure registration, and use TryAdd for idempotence"
-  in short: "A DI extension method should not contain any state or computational logic, just pure registration, and use TryAdd for idempotence"
 
+@"The extension class for IServiceCollection should be marked with UsedImplicitly attribute, indicating that return values are used"
 rule service-collection-extension-class-used-implicitly
-  must be:
-    node attribute
-      positionalParameters: ["ImplicitUseKindFlags.Access", "ImplicitUseTargetFlags.Members"]
-  in short: "The extension class for IServiceCollection should be marked with UsedImplicitly attribute, indicating that return values are used"
+  must be: node attribute with
+    positionalParameters = ["ImplicitUseKindFlags.Access", "ImplicitUseTargetFlags.Members"]

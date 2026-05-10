@@ -18,7 +18,7 @@ internal class OperationRetrievalService(
 {
     private readonly RetrievalOptions _options = options.Value;
 
-    public async Task<OperationSignature[]> RetrieveAsync(
+    public async Task<RuleSignature[]> RetrieveAsync(
         string nlTask,
         float? targetLevel = null,
         CancellationToken cancellationToken = default)

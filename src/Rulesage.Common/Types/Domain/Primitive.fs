@@ -1,9 +1,9 @@
 ﻿namespace Rulesage.Common.Types.Domain
 
-type Identifier = { id: int; ir: string }
+type Identifier = string
 
 type ParamType =
-    | Leaf
+    | Literal
     | Node of nodeType: Identifier
     | Array of paramType: ParamType
 
@@ -14,7 +14,7 @@ type Node =
         parameters: Map<string, ParamType>
     }
 
-type Converter =
+type Derivation =
     {
         id: Identifier
         description: string
@@ -22,11 +22,10 @@ type Converter =
         outputs: Map<string, ParamType>
     }
 
-type OperationSignature =
+type RuleSignature =
     {
         id: Identifier
         description: string
         level: float32
         parameters: Map<string, ParamType>
-        outputs: Map<string, ParamType>
     }

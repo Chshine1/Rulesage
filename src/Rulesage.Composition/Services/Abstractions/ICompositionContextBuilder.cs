@@ -7,7 +7,7 @@ public interface ICompositionContextBuilder
 {
     Task<CompositionContext> BuildAsync(
         Node[] availableNodes,
-        Converter[] availableConverters,
-        OperationSignature[] prefetchedOperations,
+        Derivation[] availableConverters,
+        RuleSignature[] prefetchedOperations,
         CancellationToken cancellationToken = default);
 }

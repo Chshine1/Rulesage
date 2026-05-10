@@ -3,4 +3,4 @@
 open Rulesage.Common.Types.Domain
 
 type IOperationService =
-    abstract member FindOneById: id: int -> OperationBlueprint
+    abstract member FindOneById: id: int -> Rule

@@ -13,7 +13,7 @@ type SynthesisUnit
     (
         factory: SynthesisUnitFactory,
         cancellationToken: CancellationToken,
-        operation: OperationBlueprint,
+        operation: Rule,
         operationArgs: Map<string, SynthesizedValue>,
         converterService: IConverterService,
         operationService: IOperationService,
@@ -52,7 +52,7 @@ type SynthesisUnit
     let rec SynthesizeOperationAsync () : Task<Map<string, SynthesizedNode>> =
         task {
             let! nodePairs =
-                operation.outputs
+                operation.mustBe
                 |> Seq.map (fun kv ->
                     task {
                         let! node = SynthesizeNodeAsync kv.Value
@@ -92,7 +92,7 @@ type SynthesisUnit
 
     and SynthesizeValueAsync (value: BlueprintValue) : Task<SynthesizedValue> =
         match value with
-        | BlueprintValue.Leaf template -> Format template formattedArgs |> SynthesizedValue.Leaf |> Task.FromResult
+        | BlueprintValue.Literal template -> Format template formattedArgs |> SynthesizedValue.Leaf |> Task.FromResult
         | BlueprintValue.NodeBlueprint nodeBlueprint ->
             task {
                 let! node = SynthesizeNodeAsync nodeBlueprint
@@ -108,21 +108,21 @@ type SynthesisUnit
             subtasksCache.GetOrAdd(
                 subtaskKey,
                 task {
-                    let subtask = operation.subtasks |> Map.tryFind subtaskKey
+                    let subtask = operation.given |> Map.tryFind subtaskKey
 
                     match subtask with
                     | Some s ->
                         match s with
-                        | Subtask.InvokeConverter(converter, converterArgs) ->
+                        | GivenItem.Derive(converter, converterArgs) ->
                             let! synArgs = SynthesizeArgumentsAsync converterArgs
                             return! converterService.ConvertAsync internalCts.Token converter.id synArgs
-                        | Subtask.InvokeOperation(subOp, subArgs) ->
+                        | GivenItem.Rule(subOp, subArgs) ->
                             let bp = operationService.FindOneById subOp.id
                             let! args = SynthesizeArgumentsAsync subArgs
                             let subUnit = factory.Create internalCts.Token bp args
                             let! outputs = subUnit.SynthesizeAsync()
                             return outputs |> Map.find outputKey |> SynthesizedValue.Node
-                        | Subtask.NlTask template ->
+                        | GivenItem.Ref template ->
                             let! outputs = Format template formattedArgs |> SynthesizeNlTaskAsync
                             return outputs |> Map.find outputKey |> SynthesizedValue.Node
                     | None -> return failwith "subtask not found"
@@ -152,7 +152,7 @@ and SynthesisUnitFactory
     ) =
     member this.Create
         (cancellationToken: CancellationToken)
-        (operation: OperationBlueprint)
+        (operation: Rule)
         (operationArgs: Map<string, SynthesizedValue>)
         : SynthesisUnit =
         SynthesisUnit(

@@ -19,7 +19,7 @@ public class OperationRepository(NpgsqlDataSource dataSource, JsonSerializerOpti
         return ReadToEnumerable(reader, r => r.GetString(0));
     }
 
-    public async Task<OperationBlueprint?> FindByIdAsync(int id, CancellationToken cancellationToken = default)
+    public async Task<Rule?> FindByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(cancellationToken);
@@ -36,15 +36,15 @@ public class OperationRepository(NpgsqlDataSource dataSource, JsonSerializerOpti
         var outputsJson = reader.GetString(1);
 
         var subtasks =
-            JsonSerializer.Deserialize<FSharpMap<string, Subtask>>(subtasksJson, jsonOptions);
+            JsonSerializer.Deserialize<FSharpMap<string, GivenItem>>(subtasksJson, jsonOptions);
 
         var outputs =
             JsonSerializer.Deserialize<FSharpMap<string, NodeBlueprint>>(outputsJson, jsonOptions);
 
-        return new OperationBlueprint(subtasks, outputs);
+        return new Rule(subtasks, outputs);
     }
 
-    public async Task<IEnumerable<(OperationSignature, float)>> FindOrderByCosineDistanceAsync(float[] queryVector,
+    public async Task<IEnumerable<(RuleSignature, float)>> FindOrderByCosineDistanceAsync(float[] queryVector,
         int skip, int take,
         CancellationToken cancellationToken = default)
     {
@@ -83,7 +83,7 @@ public class OperationRepository(NpgsqlDataSource dataSource, JsonSerializerOpti
                 JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(5), jsonOptions);
 
             return (
-                new OperationSignature(
+                new RuleSignature(
                     new Identifier(r.GetInt32(0), r.GetString(1)),
                     r.GetString(2),
                     r.GetFloat(3),

@@ -9,7 +9,7 @@ type OperationDefRecord =
         Description: string
         Level: float32
         Parameters: Map<string, ParamType>
-        Subtasks: Map<string, Subtask>
+        Subtasks: Map<string, GivenItem>
         Outputs: Map<string, BlueprintValue>
     }
 
@@ -46,8 +46,8 @@ module Primitive =
         between (pstring "\"") (pstring "\"") (manyChars (noneOf "\""))
 
     let atomicType: Parser<ParamType, IndentState> =
-        attempt (pstring "leaf" >>% ParamType.Leaf)
-        <|> (pstring "node" >>. spaces1 >>. ir |>> fun ir -> ParamType.Node { id = -1; ir = ir })
+        attempt (pstring "leaf" >>% ParamType.Literal)
+        <|> (pstring "node" >>. spaces1 >>. ir |>> ParamType.Node)
 
     let paramType: Parser<ParamType, IndentState> =
         atomicType .>>. many (pstring "[]")
@@ -65,26 +65,28 @@ module Primitive =
     let argBlock: Parser<Map<string, BlueprintValue>, IndentState> =
         attempt (skipNewline >>. indentedBlock (many argDef) |>> Map.ofList)
         <|>% Map.empty
-        
-    let refSourceExpr: Parser<RefSource, IndentState> = 
-        attempt (pstring "$args." >>. key |>> RefSource.FromParameter)
-        <|> (pstring "$subtasks." >>. key .>> pstring "." .>>. key |>> RefSource.FromSubtask)      
+
+    let refSourceExpr: Parser<RefSource, IndentState> =
+        attempt (pstring "$args." >>. key |>> RefSource.FromFor)
+        <|> (pstring "$subtasks." >>. key .>> pstring "." .>>. key |>> RefSource.FromGiven)
 
     valueExprRef.Value <-
         attempt (refSourceExpr .>>. many (pstring "." >>. key) |>> BlueprintValue.Ref)
-        <|> attempt (pstring "leaf" >>. spaces1 >>. stringLiteral |>> BlueprintValue.Leaf)
-        <|> attempt (pstring "node" >>. spaces1 >>. ir .>>. argBlock |>> fun (nodeIr, args) -> BlueprintValue.NodeBlueprint({ id = -1; ir = nodeIr }, args ))
-        <|> (between (pstring "[") (pstring "]") (sepBy (valueExpr .>> spaces) (pstring "," .>> spaces)) |>> (fun xs -> BlueprintValue.Array(Array.ofList xs)))
+        <|> attempt (pstring "leaf" >>. spaces1 >>. stringLiteral |>> BlueprintValue.Literal)
+        <|> attempt (pstring "node" >>. spaces1 >>. ir .>>. argBlock |>> BlueprintValue.NodeBlueprint)
+        <|> (between (pstring "[") (pstring "]") (sepBy (valueExpr .>> spaces) (pstring "," .>> spaces))
+             |>> (fun xs -> BlueprintValue.Array(Array.ofList xs)))
 
     let subtaskExpr, subtaskExprRef =
-        createParserForwardedToRef<Subtask, IndentState> ()
-        
-    subtaskExprRef.Value <- attempt (pstring "op" >>. spaces1 >>. ir .>>. argBlock |>> fun (opIr, args) -> Subtask.InvokeOperation({ id = -1; ir = opIr }, args))
-        <|> attempt (pstring "conv" >>. spaces1 >>. ir .>>. argBlock |>> fun (convIr, args) -> Subtask.InvokeConverter({ id = -1; ir = convIr }, args))
-        <|> attempt (pstring "nl" >>. spaces1 >>. stringLiteral |>> Subtask.NlTask)
-        <|> (pstring "map" >>. spaces1 >>. subtaskExpr |>> Subtask.Map)
-    
-    let subtaskDef: Parser<string * Subtask, IndentState> =
+        createParserForwardedToRef<GivenItem, IndentState> ()
+
+    subtaskExprRef.Value <-
+        attempt (pstring "op" >>. spaces1 >>. ir .>>. argBlock |>> GivenItem.Rule)
+        <|> attempt (pstring "conv" >>. spaces1 >>. ir .>>. argBlock |>> GivenItem.Derive)
+        <|> attempt (pstring "nl" >>. spaces1 >>. stringLiteral |>> GivenItem.Ref)
+        <|> (pstring "map" >>. spaces1 >>. subtaskExpr |>> GivenItem.Sequential)
+
+    let subtaskDef: Parser<string * GivenItem, IndentState> =
         key .>> spaces .>> pstring "=" .>> spaces .>>. subtaskExpr .>> skipNewline
 
     let outputDef: Parser<string * BlueprintValue, IndentState> =
