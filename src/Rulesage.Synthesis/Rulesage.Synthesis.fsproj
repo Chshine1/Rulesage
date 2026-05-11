@@ -29,4 +29,8 @@
       <ProjectReference Include="..\Rulesage.Retrieval\Rulesage.Retrieval.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <PackageReference Update="FSharp.Core" Version="10.1.203" />
+    </ItemGroup>
+
 </Project>
