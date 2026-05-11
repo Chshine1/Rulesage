@@ -13,9 +13,12 @@
         <Compile Include="Types\Composition\SemanticOperation.fs" />
         <Compile Include="Grammar\Domain\Primitive.fs" />
         <Compile Include="Grammar\ParseContext.fs" />
-        <Compile Include="Grammar\AST.fs" />
-        <Compile Include="Grammar\Parsers.fs" />
-        <Compile Include="Grammar\Domain.fs" />
+        <Compile Include="Grammar\Parsers\Lexer.fs" />
+        <Compile Include="Grammar\Parsers\Types.fs" />
+        <Compile Include="Grammar\Parsers\Vars.fs" />
+        <Compile Include="Grammar\Parsers\Strings.fs" />
+        <Compile Include="Grammar\Parsers\Primitives.fs" />
+        <Compile Include="Grammar\Parsers\Domain.fs" />
         <EmbeddedResource Include="Migrations\*.sql" />
     </ItemGroup>
 
