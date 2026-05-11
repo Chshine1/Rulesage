@@ -1,6 +1,6 @@
 ﻿namespace Rulesage.Common.Types.Domain
 
-type RefSource = 
+type RefSource =
     | FromGiven of givenKey: string * mustBeKey: string
     | FromFor of forKey: string
 

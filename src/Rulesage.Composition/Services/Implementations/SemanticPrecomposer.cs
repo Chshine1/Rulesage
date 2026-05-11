@@ -1,5 +1,4 @@
 ﻿using System.Text.Json;
-using Rulesage.Common.Types;
 using Rulesage.Common.Types.Composition;
 using Rulesage.Composition.Services.Abstractions;
 using Rulesage.Shared.Services.Abstractions;
@@ -13,8 +12,8 @@ public class SemanticPrecomposer(ILlmService llm, JsonSerializerOptions jsonOpti
         CompositionContext context,
         CancellationToken cancellationToken = default)
     {
-        var operationList = string.Join(", ", context.operations.Keys);
-        var nodeList = string.Join(", ", context.nodes.Keys);
+        var operationList = string.Join(", ", context.operations);
+        var nodeList = string.Join(", ", context.nodes);
 
         var prompt =
             $$"""

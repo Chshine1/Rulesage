@@ -11,7 +11,7 @@ public static class ServiceCollectionExtensions
     {
         public IServiceCollection AddHandlers()
         {
-            collection.AddScoped<OperationsHandler>();
+            collection.AddScoped<RulesHandler>();
             collection.AddScoped<NodesHandler>();
             
             return collection;

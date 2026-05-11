@@ -18,9 +18,9 @@
 
         <Compile Include="SynthesisUnit.fs" />
       
-        <Compile Include="IOperationSynthesizer.fs" />
+        <Compile Include="IRuleSynthesizer.fs" />
       
-        <Compile Include="OperationSynthesizer.fs" />
+        <Compile Include="RuleSynthesizer.fs" />
     </ItemGroup>
 
     <ItemGroup>

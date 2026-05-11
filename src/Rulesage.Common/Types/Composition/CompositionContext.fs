@@ -4,7 +4,7 @@ open Rulesage.Common.Types.Domain
 
 type CompositionContext =
     {
-        nodes: Map<string, Identifier>
-        converters: Map<string, Identifier>
-        operations: Map<string, Identifier>
+        nodes: string list
+        converters: string list
+        operations: string list
     }

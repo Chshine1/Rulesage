@@ -11,8 +11,8 @@ public class GrammarGenerator(JsonSerializerOptions jsonOptions) : IGrammarGener
         CompositionContext context,
         CancellationToken cancellationToken = default)
     {
-        var operationIrs = context.nodes.Keys;
-        var nodeIrs = context.operations.Keys;
+        var operationIrs = context.nodes;
+        var nodeIrs = context.operations;
 
         var schema = new
         {

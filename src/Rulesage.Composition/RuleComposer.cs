@@ -1,18 +1,19 @@
-﻿using Rulesage.Common.Types.Domain;
+﻿using Rulesage.Common.Grammar.Ast;
+using Rulesage.Common.Types.Domain;
 using Rulesage.Composition.Services.Abstractions;
 
 namespace Rulesage.Composition;
 
-public class OperationComposer(
+public class RuleComposer(
     ICompositionContextBuilder contextBuilder,
     ISemanticPrecomposer semanticComposer,
     IGrammarGenerator grammarGenerator,
     IDslConstrainedDecoder gcd)
-    : IOperationComposer
+    : IRuleComposer
 {
     public async Task<Rule> ComposeAsync(
         string nlTask,
-        RuleSignature[] prefetchedOperations,
+        RuleExpr[] prefetchedOperations,
         CancellationToken cancellationToken = default)
     {
         var context = await contextBuilder.BuildAsync([], [], prefetchedOperations, cancellationToken);

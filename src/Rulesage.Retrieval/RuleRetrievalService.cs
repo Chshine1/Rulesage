@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Rulesage.Common.Types.Domain;
+using Rulesage.Common.Grammar.Ast;
 using Rulesage.Retrieval.Options;
 using Rulesage.Retrieval.Utils;
 using Rulesage.Shared.Repositories.Abstractions;
@@ -8,17 +8,17 @@ using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.Retrieval;
 
-internal class OperationRetrievalService(
+internal class RuleRetrievalService(
     IEmbeddingService embeddingService,
-    IOperationRepository operationRepository,
-    IOperationIdfService idfService,
+    IRuleRepository ruleRepository,
+    IRuleIdfService idfService,
     IOptions<RetrievalOptions> options,
-    ILogger<OperationRetrievalService> logger)
-    : IOperationRetrievalService
+    ILogger<RuleRetrievalService> logger)
+    : IRuleRetrievalService
 {
     private readonly RetrievalOptions _options = options.Value;
 
-    public async Task<RuleSignature[]> RetrieveAsync(
+    public async Task<RuleExpr[]> RetrieveAsync(
         string nlTask,
         float? targetLevel = null,
         CancellationToken cancellationToken = default)
@@ -26,7 +26,7 @@ internal class OperationRetrievalService(
         var queryVector = embeddingService.GetEmbedding(nlTask);
 
         var coarseCandidates =
-            (await operationRepository.FindOrderByCosineDistanceAsync(queryVector, 0, _options.CoarseRecallSize,
+            (await ruleRepository.FindOrderByCosineDistanceAsync(queryVector, 0, _options.CoarseRecallSize,
                 cancellationToken)).ToArray();
 
         if (logger.IsEnabled(LogLevel.Debug))
@@ -36,7 +36,7 @@ internal class OperationRetrievalService(
 
         var tau = targetLevel ?? 1.0f;
         var idfTasks = coarseCandidates
-            .Select(c => idfService.ComputeAverageIdfAsync(c.Item1.description, cancellationToken));
+            .Select(c => idfService.ComputeAverageIdfAsync(c.Item1.Annotation, cancellationToken));
 
         var idfResults = await Task.WhenAll(idfTasks);
 
@@ -46,7 +46,7 @@ internal class OperationRetrievalService(
                 Operation = t.Item1,
                 CosineSimilarity = 1.0f - t.Item2,
                 LevelFactor = OperationRetrievalUtils.ComputeLevelFactor(
-                    t.Item1.level, tau, _options.LevelAlignmentSigma),
+                    0.8f, tau, _options.LevelAlignmentSigma),
                 DecayFactor = OperationRetrievalUtils.ComputeDecayFactor(
                     averageIdf, _options.IdfPenaltyBeta)
             })

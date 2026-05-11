@@ -14,7 +14,7 @@ public static class ServiceCollectionExtensions
         {
             collection.Configure(configureOptions ?? (_ => { }));
 
-            collection.AddScoped<IOperationRetrievalService, OperationRetrievalService>();
+            collection.AddScoped<IRuleRetrievalService, RuleRetrievalService>();
 
             return collection;
         }

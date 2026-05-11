@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Rulesage.Cli.Commands;
 using Rulesage.Cli.Commands.Nodes;
-using Rulesage.Cli.Commands.Operations;
+using Rulesage.Cli.Commands.Rules;
 using Rulesage.Cli.Extensions;
 using Rulesage.Shared.Extensions;
 
@@ -43,14 +43,13 @@ public class Program
         var initCommand = InitCommand.CreateInitCommand(host.Services);
         rootCommand.Subcommands.Add(initCommand);
 
-        var operationCommand = new Command("operations");
+        var operationCommand = new Command("rules");
 
-        operationCommand.Subcommands.Add(OperationCommands.CreateSearchCommand(host.Services));
+        operationCommand.Subcommands.Add(RuleCommands.CreateSearchCommand(host.Services));
 
         var nodeCommand = new Command("nodes");
 
         nodeCommand.Subcommands.Add(NodeCommands.CreateSearchCommand(host.Services));
-        nodeCommand.Subcommands.Add(NodeCommands.CreateAddCommand(host.Services));
 
         rootCommand.Subcommands.Add(operationCommand);
         rootCommand.Subcommands.Add(nodeCommand);

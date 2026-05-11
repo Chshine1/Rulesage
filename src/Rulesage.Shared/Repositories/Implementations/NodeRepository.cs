@@ -19,7 +19,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         return ReadToEnumerable(reader, r => r.GetString(0));
     }
 
-    public async Task<IEnumerable<Node>> FindByIdsAsync(IEnumerable<int> ids, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Node>> FindByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(cancellationToken);
@@ -29,7 +29,6 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
                 """
                 SELECT
                     id,
-                    ir,
                     description,
                     parameters
                 FROM nodes
@@ -44,52 +43,17 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         return ReadToEnumerable(reader, r =>
         {
             var parameters =
-                JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(3), jsonOptions);
+                JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(2), jsonOptions);
 
             return new Node(
-                new Identifier(r.GetInt32(0), r.GetString(1)),
-                r.GetString(2),
+                r.GetString(0),
+                r.GetString(1),
                 parameters
             );
         });
     }
 
-    public async Task<IEnumerable<Node>> FindByIrsAsync(IEnumerable<string> irs, CancellationToken cancellationToken = default)
-    {
-        await using var conn = dataSource.CreateConnection();
-        await conn.OpenAsync(cancellationToken);
-
-        await using var cmd =
-            new NpgsqlCommand(
-                """
-                SELECT
-                    id,
-                    ir,
-                    description,
-                    parameters
-                FROM nodes
-                WHERE ir=ANY($1) 
-                """,
-                conn
-            );
-        
-        cmd.Parameters.Add(irs.ToArray());
-        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-        
-        return ReadToEnumerable(reader, r =>
-        {
-            var parameters =
-                JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(3), jsonOptions);
-
-            return new Node(
-                new Identifier(r.GetInt32(0), r.GetString(1)),
-                r.GetString(2),
-                parameters
-            );
-        });
-    }
-
-    public async Task AddAsync(string ir, string description, IReadOnlyDictionary<string, ParamType> paramsMap,
+    public async Task AddAsync(string id, string description, IReadOnlyDictionary<string, ParamType> paramsMap,
         CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
@@ -104,7 +68,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
                 conn
             );
         
-        cmd.Parameters.Add(ir);
+        cmd.Parameters.Add(id);
         cmd.Parameters.Add(description);
         cmd.Parameters.Add(JsonSerializer.Serialize(paramsMap, jsonOptions));
         await cmd.ExecuteNonQueryAsync(cancellationToken);
@@ -121,7 +85,6 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
                 """
                 SELECT
                     id,
-                    ir,
                     description,
                     parameters,
                     (embedding <=> $1) AS distance
@@ -140,15 +103,15 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         return ReadToEnumerable(reader, r =>
         {
             var parameters =
-                JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(3), jsonOptions);
+                JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(2), jsonOptions);
 
             return (
                 new Node(
-                    new Identifier(r.GetInt32(0), r.GetString(1)),
-                    r.GetString(2),
+                    r.GetString(0),
+                    r.GetString(1),
                     parameters
                 ),
-                (float)r.GetDouble(4)
+                (float)r.GetDouble(3)
             );
         });
     }

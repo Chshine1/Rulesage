@@ -2,11 +2,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Rulesage.Cli.Handlers;
 
-namespace Rulesage.Cli.Commands.Operations;
+namespace Rulesage.Cli.Commands.Rules;
 
-public static partial class OperationCommands
+public static class RuleCommands
 {
-    public enum OperationFormat
+    public enum RuleFormat
     {
         Json,
         Table,
@@ -15,7 +15,7 @@ public static partial class OperationCommands
 
     public static Command CreateSearchCommand(IServiceProvider serviceProvider)
     {
-        var cmd = new Command("search", "Search operations by text or semantics")
+        var cmd = new Command("search", "Search rules by text or semantics")
         {
             new Option<string>("--query")
             {
@@ -31,22 +31,22 @@ public static partial class OperationCommands
                 Required = false,
                 DefaultValueFactory = _ => 0
             },
-            new Option<OperationFormat>("--format")
+            new Option<RuleFormat>("--format")
             {
                 Required = false,
-                DefaultValueFactory = _ => OperationFormat.Plain
+                DefaultValueFactory = _ => RuleFormat.Plain
             }
         };
 
         cmd.SetAction(async (result, cancellationToken) =>
         {
             using var scope = serviceProvider.CreateScope();
-            var handler = scope.ServiceProvider.GetRequiredService<OperationsHandler>();
+            var handler = scope.ServiceProvider.GetRequiredService<RulesHandler>();
             await handler.SearchBySemanticQueryAsync(
                 result.GetRequiredValue<string>("--query"),
                 result.GetRequiredValue<int>("--offset"),
                 result.GetRequiredValue<int>("--limit"),
-                result.GetRequiredValue<OperationFormat>("--format"), cancellationToken);
+                result.GetRequiredValue<RuleFormat>("--format"), cancellationToken);
         });
 
         return cmd;

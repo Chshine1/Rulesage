@@ -32,18 +32,14 @@ type ValueExpr =
 
 type ForExpr = { Key: string; Type: TypeExpr }
 
-type ForBlock = ForExpr list
-
 type GivenExpr = { Key: string; Value: ValueExpr }
-
-type GivenBlock = GivenExpr list
 
 type RuleExpr =
     {
-        Annotation: string
         Id: Identifier
-        Fors: ForBlock
-        Givens: GivenBlock
+        Annotation: string
+        Fors: Map<string, ForExpr>
+        Givens: Map<string, GivenExpr>
         MustBe: ValueExpr
     }
 
@@ -113,7 +109,7 @@ module Domain =
         pKey .>> skipString "(" .>>. pTypeExpr .>> skipString ")"
         |>> fun (k, t) -> { Key = k; Type = t }
 
-    let pForBlock: Parser<ForBlock, ParseContext> =
+    let pForBlock: Parser<ForExpr list, ParseContext> =
         opt (skipString "for" >>. skipString ":" >>. sepBy1 pForExpr (skipString ","))
         |>> fun ol ->
             match ol with
@@ -123,7 +119,7 @@ module Domain =
     let pGivenExpr: Parser<GivenExpr, ParseContext> =
         pKey .>> skipString ":" .>>. pValueExpr |>> fun (k, v) -> { Key = k; Value = v }
 
-    let pGivenBlock: Parser<GivenBlock, ParseContext> =
+    let pGivenBlock: Parser<GivenExpr list, ParseContext> =
         opt (skipString "given" >>. skipString ":" >>. many1 pGivenExpr)
         |>> fun ol ->
             match ol with
@@ -139,11 +135,11 @@ module Domain =
         .>>. pForBlock
         .>>. pGivenBlock
         .>>. pMustBeExpr
-        |>> fun ((((a, i), f), g), m) ->
+        |>> fun ((((a, i), fs), gs), m) ->
             {
-                Annotation = a
                 Id = i
-                Fors = f
-                Givens = g
+                Annotation = a
+                Fors = fs |> Seq.map (fun f -> f.Key, f) |> Map.ofSeq
+                Givens = gs |> Seq.map (fun g -> g.Key, g) |> Map.ofSeq
                 MustBe = m
             }

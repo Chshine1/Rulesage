@@ -54,25 +54,25 @@ type SynthesisUnit
             let! nodePairs =
                 operation.mustBe
                 |> Seq.map (fun kv ->
-                    task {
-                        let! node = SynthesizeNodeAsync kv.Value
-                        return kv.Key, node
-                    }
+                    match kv.Value with
+                    | NodeBlueprint(n, args) ->
+                        task {
+                            let! node = SynthesizeNodeAsync n args
+                            return kv.Key, node
+                        }
+                    | _ -> failwith ""
+
                 )
                 |> whenAll
 
             return nodePairs |> Map.ofSeq
         }
 
-    and SynthesizeNodeAsync (node: NodeBlueprint) : Task<SynthesizedNode> =
+    and SynthesizeNodeAsync (node: Identifier) (args: Map<string, BlueprintValue>) : Task<SynthesizedNode> =
         task {
-            let! args = SynthesizeArgumentsAsync node.args
+            let! args = SynthesizeArgumentsAsync args
 
-            return
-                {
-                    nodeType = node.node
-                    arguments = args
-                }
+            return { nodeType = node; arguments = args }
         }
 
     and SynthesizeArgumentsAsync (args: Map<string, BlueprintValue>) : Task<Map<string, SynthesizedValue>> =
@@ -93,41 +93,43 @@ type SynthesisUnit
     and SynthesizeValueAsync (value: BlueprintValue) : Task<SynthesizedValue> =
         match value with
         | BlueprintValue.Literal template -> Format template formattedArgs |> SynthesizedValue.Leaf |> Task.FromResult
-        | BlueprintValue.NodeBlueprint nodeBlueprint ->
+        | BlueprintValue.NodeBlueprint(nodeBlueprint, args) ->
             task {
-                let! node = SynthesizeNodeAsync nodeBlueprint
+                let! node = SynthesizeNodeAsync nodeBlueprint args
                 return node |> SynthesizedValue.Node
             }
-        | BlueprintValue.FromParameter parameterKey ->
-            let arg = operationArgs |> Map.tryFind parameterKey
+        | BlueprintValue.Ref(source, keys) ->
+            if source.IsFromFor then
+                let arg = operationArgs |> Map.tryFind keys[0]
 
-            match arg with
-            | Some a -> a |> Task.FromResult
-            | None -> failwith "argument key not found"
-        | BlueprintValue.FromSubtask(subtaskKey, outputKey) ->
-            subtasksCache.GetOrAdd(
-                subtaskKey,
-                task {
-                    let subtask = operation.given |> Map.tryFind subtaskKey
+                match arg with
+                | Some a -> a |> Task.FromResult
+                | None -> failwith "argument key not found"
+            else
+                subtasksCache.GetOrAdd(
+                    keys[0],
+                    task {
+                        let subtask = operation.given |> Map.tryFind keys[0]
 
-                    match subtask with
-                    | Some s ->
-                        match s with
-                        | GivenItem.Derive(converter, converterArgs) ->
-                            let! synArgs = SynthesizeArgumentsAsync converterArgs
-                            return! converterService.ConvertAsync internalCts.Token converter.id synArgs
-                        | GivenItem.Rule(subOp, subArgs) ->
-                            let bp = operationService.FindOneById subOp.id
-                            let! args = SynthesizeArgumentsAsync subArgs
-                            let subUnit = factory.Create internalCts.Token bp args
-                            let! outputs = subUnit.SynthesizeAsync()
-                            return outputs |> Map.find outputKey |> SynthesizedValue.Node
-                        | GivenItem.Ref template ->
-                            let! outputs = Format template formattedArgs |> SynthesizeNlTaskAsync
-                            return outputs |> Map.find outputKey |> SynthesizedValue.Node
-                    | None -> return failwith "subtask not found"
-                }
-            )
+                        match subtask with
+                        | Some s ->
+                            match s with
+                            | GivenItem.Derive(converter, converterArgs) ->
+                                let! synArgs = SynthesizeArgumentsAsync converterArgs
+                                return! converterService.ConvertAsync internalCts.Token converter synArgs
+                            | GivenItem.Rule(subOp, subArgs) ->
+                                let bp = operationService.FindOneById subOp
+                                let! args = SynthesizeArgumentsAsync subArgs
+                                let subUnit = factory.Create internalCts.Token bp args
+                                let! outputs = subUnit.SynthesizeAsync()
+                                return outputs |> Map.find keys[1] |> SynthesizedValue.Node
+                            | GivenItem.Ref template ->
+                                let! outputs = Format template formattedArgs |> SynthesizeNlTaskAsync
+                                return outputs |> Map.find keys[1] |> SynthesizedValue.Node
+                            | Sequential _ -> return failwith "todo"
+                        | None -> return failwith "subtask not found"
+                    }
+                )
         | BlueprintValue.Array arr ->
             task {
                 let! r = arr |> Seq.map SynthesizeValueAsync |> whenAll

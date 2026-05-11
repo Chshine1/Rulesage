@@ -11,7 +11,6 @@
         <Compile Include="Types\Domain\Rule.fs" />
         <Compile Include="Types\Composition\CompositionContext.fs" />
         <Compile Include="Types\Composition\SemanticOperation.fs" />
-        <Compile Include="Grammar\Domain\Primitive.fs" />
         <Compile Include="Grammar\ParseContext.fs" />
         <Compile Include="Grammar\Parsers\Lexer.fs" />
         <Compile Include="Grammar\Parsers\Types.fs" />

@@ -7,6 +7,6 @@ open Rulesage.Synthesis.Types
 type IConverterService =
     abstract member ConvertAsync:
         cancellationToken: CancellationToken ->
-        converterId: int ->
+        converterId: string ->
         args: Map<string, SynthesizedValue> ->
             Task<SynthesizedValue>

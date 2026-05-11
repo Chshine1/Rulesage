@@ -1,11 +1,11 @@
-﻿using Rulesage.Common.Types.Domain;
+﻿using Rulesage.Common.Grammar.Ast;
 
 namespace Rulesage.Retrieval;
 
 
-public interface IOperationRetrievalService
+public interface IRuleRetrievalService
 {
-    Task<RuleSignature[]> RetrieveAsync(
+    Task<RuleExpr[]> RetrieveAsync(
         string nlTask,
         float? targetLevel = null,
         CancellationToken cancellationToken = default);

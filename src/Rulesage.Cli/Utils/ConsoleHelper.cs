@@ -10,9 +10,6 @@ public static class ConsoleHelper
         Console.ForegroundColor = prev;
     }
 
-    public static void WriteColored(ConsoleColor color, string text) =>
-        WithColor(color, () => Console.Write(text));
-
     public static void WriteLineColored(ConsoleColor color, string text) =>
         WithColor(color, () => Console.WriteLine(text));
 }

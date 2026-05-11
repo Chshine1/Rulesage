@@ -39,7 +39,7 @@ public static class ServiceCollectionExtensions
                         ["[MASK]"] = 103
                     }
                 }));
-            collection.AddSingleton<IOperationIdfService, OperationIdfService>();
+            collection.AddSingleton<IRuleIdfService, RuleIdfService>();
             collection.AddSingleton<IEmbeddingService>(sp =>
                 new OnnxEmbeddingService(sp.GetRequiredService<Tokenizer>(), onnxModelPath));
 
@@ -48,7 +48,7 @@ public static class ServiceCollectionExtensions
                     .UseLoggerFactory(sp.GetRequiredService<ILoggerFactory>()).Build());
 
             collection.AddScoped<INodeRepository, NodeRepository>();
-            collection.AddScoped<IOperationRepository, OperationRepository>();
+            collection.AddScoped<IRuleRepository, RuleRepository>();
 
             return collection;
         }

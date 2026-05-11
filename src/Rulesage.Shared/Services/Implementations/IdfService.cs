@@ -59,5 +59,5 @@ internal class IdfService<TRepository>: IIdfService where TRepository : IDocumen
     private record IdfData(Dictionary<int, float> IdfMap, float DefaultIdf);
 }
 
-internal class OperationIdfService(IServiceScopeFactory scopeFactory, Tokenizer tokenizer)
-    : IdfService<OperationRepository>(scopeFactory, tokenizer), IOperationIdfService;
+internal class RuleIdfService(IServiceScopeFactory scopeFactory, Tokenizer tokenizer)
+    : IdfService<RuleRepository>(scopeFactory, tokenizer), IRuleIdfService;
