@@ -2,7 +2,7 @@
 
 open System.Threading
 open System.Threading.Tasks
-open Rulesage.Common.Types.Domain
+open Rulesage.Common.Grammar.Ast
 
 type INlTaskResolver =
-    abstract member ResolveAsync: cancellationToken: CancellationToken -> nlTask: string -> Task<Rule>
+    abstract member ResolveAsync: cancellationToken: CancellationToken -> nlTask: string -> Task<RuleExpr>

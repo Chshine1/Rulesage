@@ -4,6 +4,8 @@ type StringPart =
     | Literal of string
     | Interpolation of var: VarExpr
 
+type StringTemplate = StringPart list
+
 namespace Rulesage.Common.Grammar.Parsers
 
 open FParsec
@@ -29,7 +31,7 @@ module Strings =
 
         choice [ pEscaped; pInterpolation; pNormalChar ]
 
-    let pSingleLineString: Parser<StringPart list, ParseContext> =
+    let pSingleLineString: Parser<StringTemplate, ParseContext> =
         between (pstring "\"") (pstring "\"") (many pStringPart)
 
     let pAnnotation: Parser<string, ParseContext> =

@@ -1,12 +1,12 @@
-﻿using Rulesage.Common.Types.Composition;
-using Rulesage.Common.Types.Domain;
+﻿using Rulesage.Common.Grammar.Ast;
+using Rulesage.Common.Types.Composition;
 using Rulesage.Composition.Types;
 
 namespace Rulesage.Composition.Services.Abstractions;
 
 public interface IDslConstrainedDecoder
 {
-    Task<Rule> DecodeAsync(
+    Task<RuleExpr> DecodeAsync(
         SemanticOperation semanticOperation,
         CompositionContext compositionContext,
         Grammar grammar,

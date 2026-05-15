@@ -1,7 +1,5 @@
 ﻿namespace Rulesage.Common.Types.Composition
 
-open Rulesage.Common.Types.Domain
-
 type CompositionContext =
     {
         nodes: string list

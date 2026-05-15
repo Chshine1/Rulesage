@@ -1,5 +1,4 @@
 ﻿using Rulesage.Common.Grammar.Ast;
-using Rulesage.Common.Types.Domain;
 using Rulesage.Composition.Services.Abstractions;
 
 namespace Rulesage.Composition;
@@ -11,7 +10,7 @@ public class RuleComposer(
     IDslConstrainedDecoder gcd)
     : IRuleComposer
 {
-    public async Task<Rule> ComposeAsync(
+    public async Task<RuleExpr> ComposeAsync(
         string nlTask,
         RuleExpr[] prefetchedOperations,
         CancellationToken cancellationToken = default)

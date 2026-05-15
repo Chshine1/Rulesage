@@ -4,8 +4,8 @@ open System.Threading
 open System.Threading.Tasks
 open Rulesage.Synthesis.Types
 
-type IConverterService =
-    abstract member ConvertAsync:
+type IActionService =
+    abstract member CallAsync:
         cancellationToken: CancellationToken ->
         converterId: string ->
         args: Map<string, SynthesizedValue> ->

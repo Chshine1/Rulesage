@@ -8,9 +8,9 @@
     <ItemGroup>
         <Compile Include="Types\SynthesizedValue.fs" />
 
-        <Compile Include="Services\Abstractions\IConverterService.fs" />
+        <Compile Include="Services\Abstractions\IActionService.fs" />
 
-        <Compile Include="Services\Abstractions\IOperationService.fs" />
+        <Compile Include="Services\Abstractions\INodeService.fs" />
 
         <Compile Include="Services\Abstractions\INlTaskResolver.fs" />
 

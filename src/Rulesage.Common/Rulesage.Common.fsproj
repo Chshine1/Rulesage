@@ -6,9 +6,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Types\Domain\Primitive.fs" />
-        <Compile Include="Types\Domain\BlueprintValue.fs" />
-        <Compile Include="Types\Domain\Rule.fs" />
         <Compile Include="Types\Composition\CompositionContext.fs" />
         <Compile Include="Types\Composition\SemanticOperation.fs" />
         <Compile Include="Grammar\ParseContext.fs" />

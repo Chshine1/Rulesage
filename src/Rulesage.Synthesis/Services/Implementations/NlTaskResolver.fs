@@ -6,11 +6,10 @@ open Rulesage.Synthesis.Services.Abstractions
 
 type NlTaskResolver(operationRetrievalService: IRuleRetrievalService, operationComposer: IRuleComposer) =
     interface INlTaskResolver with
-        member this.ResolveAsync cancellationToken nlTask =
+        member _.ResolveAsync cancellationToken nlTask =
             task {
                 let! prefetchedOps =
                     operationRetrievalService.RetrieveAsync(nlTask, System.Nullable(), cancellationToken)
 
-                let! op = operationComposer.ComposeAsync(nlTask, prefetchedOps, cancellationToken)
-                return op
+                return! operationComposer.ComposeAsync(nlTask, prefetchedOps, cancellationToken)
             }

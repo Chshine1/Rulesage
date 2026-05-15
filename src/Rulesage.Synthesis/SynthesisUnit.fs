@@ -1,11 +1,10 @@
 ﻿namespace Rulesage.Synthesis
 
-open System.Collections.Concurrent
 open System.Text.Json
-open System.Text.RegularExpressions
 open System.Threading
 open System.Threading.Tasks
-open Rulesage.Common.Types.Domain
+open Rulesage.Common.Grammar.Ast
+open Rulesage.Shared.Repositories.Abstractions
 open Rulesage.Synthesis.Services.Abstractions
 open Rulesage.Synthesis.Types
 
@@ -13,25 +12,14 @@ type SynthesisUnit
     (
         factory: SynthesisUnitFactory,
         cancellationToken: CancellationToken,
-        operation: Rule,
-        operationArgs: Map<string, SynthesizedValue>,
-        converterService: IConverterService,
-        operationService: IOperationService,
+        rule: RuleExpr,
+        forArgs: Map<string, SynthesizedValue>,
+        actionService: IActionService,
+        nodeService: INodeService,
+        ruleRepository: IRuleRepository,
         nlTaskResolver: INlTaskResolver,
         jsonOptions: JsonSerializerOptions
     ) =
-    static let placeholderRegex = Regex(@"\{(\w+)\}", RegexOptions.Compiled)
-
-    static let Format (template: string) (values: Map<string, string>) : string =
-        placeholderRegex.Replace(
-            template,
-            fun (m: Match) ->
-                let key = m.Groups[1].Value
-
-                match values.TryFind key with
-                | Some v -> v
-                | None -> failwithf $"Missing argument key: %s{key}"
-        )
 
     let internalCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
 
@@ -44,126 +32,204 @@ type SynthesisUnit
                 return! Task.FromException<'T[]>(ex)
         }
 
-    let formattedArgs =
-        operationArgs |> Map.map (fun _ a -> JsonSerializer.Serialize(a, jsonOptions))
-
-    let subtasksCache = ConcurrentDictionary<string, Task<SynthesizedValue>>()
-
-    let rec SynthesizeOperationAsync () : Task<Map<string, SynthesizedNode>> =
+    let rec synthesizeVarExprAsync (varExpr: VarExpr) : Task<SynthesizedValue> =
         task {
-            let! nodePairs =
-                operation.mustBe
-                |> Seq.map (fun kv ->
-                    match kv.Value with
-                    | NodeBlueprint(n, args) ->
+            let! source =
+                (match varExpr.Source with
+                 | VarSource.For -> forArgs |> Map.find varExpr.Key |> Task.FromResult
+                 | VarSource.Given -> synthesizeGivenExprAsync varExpr.Key)
+
+            return (source, varExpr.Fields) ||> Seq.fold _.GetNodeField
+        }
+
+    and synthesizeStringTemplateAsync (template: StringTemplate) : Task<string> =
+        task {
+            let parts =
+                template
+                |> Seq.map (fun p ->
+                    match p with
+                    | StringPart.Literal l -> Task.FromResult l
+                    | StringPart.Interpolation i ->
                         task {
-                            let! node = SynthesizeNodeAsync n args
-                            return kv.Key, node
+                            let! syn = synthesizeVarExprAsync i
+                            return JsonSerializer.Serialize(syn, jsonOptions)
                         }
-                    | _ -> failwith ""
-
                 )
-                |> whenAll
 
-            return nodePairs |> Map.ofSeq
+            let! result = parts |> whenAll
+            return result |> String.concat ""
         }
 
-    and SynthesizeNodeAsync (node: Identifier) (args: Map<string, BlueprintValue>) : Task<SynthesizedNode> =
-        task {
-            let! args = SynthesizeArgumentsAsync args
-
-            return { nodeType = node; arguments = args }
-        }
-
-    and SynthesizeArgumentsAsync (args: Map<string, BlueprintValue>) : Task<Map<string, SynthesizedValue>> =
-        task {
-            let! tasks =
-                args
-                |> Seq.map (fun kv ->
-                    task {
-                        let! node = SynthesizeValueAsync kv.Value
-                        return kv.Key, node
-                    }
-                )
-                |> whenAll
-
-            return tasks |> Map.ofSeq
-        }
-
-    and SynthesizeValueAsync (value: BlueprintValue) : Task<SynthesizedValue> =
-        match value with
-        | BlueprintValue.Literal template -> Format template formattedArgs |> SynthesizedValue.Leaf |> Task.FromResult
-        | BlueprintValue.NodeBlueprint(nodeBlueprint, args) ->
+    and synthesizePrimitiveExprAsync (primitiveExpr: PrimitiveExpr) : Task<SynthesizedValue> =
+        match primitiveExpr with
+        | PrimitiveExpr.Var v -> synthesizeVarExprAsync v
+        | PrimitiveExpr.Array a ->
             task {
-                let! node = SynthesizeNodeAsync nodeBlueprint args
-                return node |> SynthesizedValue.Node
-            }
-        | BlueprintValue.Ref(source, keys) ->
-            if source.IsFromFor then
-                let arg = operationArgs |> Map.tryFind keys[0]
-
-                match arg with
-                | Some a -> a |> Task.FromResult
-                | None -> failwith "argument key not found"
-            else
-                subtasksCache.GetOrAdd(
-                    keys[0],
-                    task {
-                        let subtask = operation.given |> Map.tryFind keys[0]
-
-                        match subtask with
-                        | Some s ->
-                            match s with
-                            | GivenItem.Derive(converter, converterArgs) ->
-                                let! synArgs = SynthesizeArgumentsAsync converterArgs
-                                return! converterService.ConvertAsync internalCts.Token converter synArgs
-                            | GivenItem.Rule(subOp, subArgs) ->
-                                let bp = operationService.FindOneById subOp
-                                let! args = SynthesizeArgumentsAsync subArgs
-                                let subUnit = factory.Create internalCts.Token bp args
-                                let! outputs = subUnit.SynthesizeAsync()
-                                return outputs |> Map.find keys[1] |> SynthesizedValue.Node
-                            | GivenItem.Ref template ->
-                                let! outputs = Format template formattedArgs |> SynthesizeNlTaskAsync
-                                return outputs |> Map.find keys[1] |> SynthesizedValue.Node
-                            | Sequential _ -> return failwith "todo"
-                        | None -> return failwith "subtask not found"
-                    }
-                )
-        | BlueprintValue.Array arr ->
-            task {
-                let! r = arr |> Seq.map SynthesizeValueAsync |> whenAll
+                let! r = a |> Seq.map synthesizePrimitiveExprAsync |> whenAll
                 return SynthesizedValue.Array r
             }
+        | PrimitiveExpr.StringLiteral s ->
+            task {
+                let! str = synthesizeStringTemplateAsync s
+                return SynthesizedValue.Leaf str
+            }
+        | PrimitiveExpr.Ref r ->
+            task {
+                let! s = synthesizeStringTemplateAsync r.Desc
+                return! synthesizeNlTaskAsync s
+            }
 
-    and SynthesizeNlTaskAsync (nlTask: string) =
+    and synthesizeArgsAsync (args: ArgBlock) : Task<Map<string, SynthesizedValue>> =
         task {
-            let! op = nlTaskResolver.ResolveAsync internalCts.Token nlTask
-            let unit = factory.Create internalCts.Token op Map.empty
+            let paramTasks =
+                args
+                |> Seq.map (fun a ->
+                    task {
+                        let! syn = synthesizePrimitiveExprAsync a.Value
+                        return a.Key, syn
+                    }
+                )
+
+            let! ps = paramTasks |> whenAll
+            return ps |> Map.ofArray
+        }
+
+    and processSeq (args: IterArgBlock) (op: Map<string, SynthesizedValue> -> Task<SynthesizedValue>) =
+        task {
+            let! synthesizedArgs =
+                args
+                |> Seq.map (fun a ->
+                    task {
+                        let! v = synthesizePrimitiveExprAsync a.Value
+                        return a.Key, a.Iter, v
+                    }
+                )
+                |> whenAll
+
+            let synthesizedArgs = synthesizedArgs |> Array.toList
+
+            let iterArgs = synthesizedArgs |> List.filter (fun (_, iter, _) -> iter)
+
+            let length =
+                match iterArgs with
+                | [] -> 1
+                | (_, _, firstArr) :: _ ->
+                    match firstArr with
+                    | SynthesizedValue.Array items -> items.Length
+                    | _ -> failwith "Iter parameter value must be an array"
+
+            for key, _, arrVal in iterArgs do
+                match arrVal with
+                | SynthesizedValue.Array items ->
+                    if items.Length <> length then
+                        failwithf
+                            $"Iter parameter '%s{key}' array length mismatch: expected %d{length}, got %d{items.Length}"
+                | _ -> failwithf $"Iter parameter '%s{key}' must be an array"
+
+            let buildMap (idx: int) : Map<string, SynthesizedValue> =
+                synthesizedArgs
+                |> List.map (fun (key, iter, value) ->
+                    let paramValue =
+                        if iter then
+                            match value with
+                            | SynthesizedValue.Array items -> items[idx]
+                            | _ -> failwith "unexpected"
+                        else
+                            value
+
+                    key, paramValue
+                )
+                |> Map.ofList
+
+            let tasks = [| for i in 0 .. length - 1 -> op (buildMap i) |]
+            let! results = tasks |> whenAll
+            return SynthesizedValue.Array results
+        }
+
+    and synthesizeValueExprAsync (valueExpr: ValueExpr) : Task<SynthesizedValue> =
+        task {
+            match valueExpr with
+            | ValueExpr.Primitive e -> return! synthesizePrimitiveExprAsync e
+            | ValueExpr.Dynamic d ->
+                match d with
+                | DynamicExpr.Node(nodeSignature, args) ->
+                    let! withValues = synthesizeArgsAsync args
+                    let! node = nodeService.BuildAsync internalCts.Token nodeSignature.id withValues
+                    return node |> SynthesizedValue.Node
+                | DynamicExpr.ResultOf(actionId, args) ->
+                    let! whereValues = synthesizeArgsAsync args
+                    return! actionService.CallAsync internalCts.Token actionId whereValues
+                | DynamicExpr.Satisfying(ruleId, args) ->
+                    let! subRule = ruleRepository.FindByIdAsync(ruleId, internalCts.Token)
+                    let! whereValues = synthesizeArgsAsync args
+                    let subUnit = factory.Create internalCts.Token subRule whereValues
+                    return! subUnit.SynthesizeAsync()
+            | ValueExpr.Seq s ->
+                match s with
+                | SeqExpr.Node(nodeSig, args) ->
+                    return!
+                        processSeq
+                            args
+                            (fun withValues ->
+                                task {
+                                    let! node = nodeService.BuildAsync internalCts.Token nodeSig.id withValues
+                                    return node |> SynthesizedValue.Node
+                                }
+                            )
+                | SeqExpr.ResultOf(actionId, args) ->
+                    return!
+                        processSeq
+                            args
+                            (fun withValues -> actionService.CallAsync internalCts.Token actionId withValues)
+                | SeqExpr.Satisfying(ruleId, args) ->
+                    return!
+                        processSeq
+                            args
+                            (fun withValues ->
+                                task {
+                                    let! subRule = ruleRepository.FindByIdAsync(ruleId, internalCts.Token)
+                                    let subUnit = factory.Create internalCts.Token subRule withValues
+                                    return! subUnit.SynthesizeAsync()
+                                }
+                            )
+        }
+
+    and synthesizeGivenExprAsync (givenKey: string) : Task<SynthesizedValue> =
+        task {
+            let e = rule.Givens |> Map.find givenKey
+            return! (e.Value |> synthesizeValueExprAsync)
+        }
+
+    and synthesizeNlTaskAsync (nlTask: string) : Task<SynthesizedValue> =
+        task {
+            let! rl = nlTaskResolver.ResolveAsync internalCts.Token nlTask
+            let unit = factory.Create internalCts.Token rl Map.empty
             return! unit.SynthesizeAsync()
         }
 
-    member _.SynthesizeAsync() : Task<Map<string, SynthesizedNode>> = SynthesizeOperationAsync()
+    member _.SynthesizeAsync() : Task<SynthesizedValue> = synthesizeValueExprAsync rule.MustBe
 
 and SynthesisUnitFactory
     (
-        converterService: IConverterService,
-        operationService: IOperationService,
+        actionService: IActionService,
+        nodeService: INodeService,
+        ruleRepository: IRuleRepository,
         nlTaskResolver: INlTaskResolver,
         jsonOptions: JsonSerializerOptions
     ) =
     member this.Create
         (cancellationToken: CancellationToken)
-        (operation: Rule)
-        (operationArgs: Map<string, SynthesizedValue>)
+        (rule: RuleExpr)
+        (ruleArgs: Map<string, SynthesizedValue>)
         : SynthesisUnit =
         SynthesisUnit(
             this,
             cancellationToken,
-            operation,
-            operationArgs,
-            converterService,
-            operationService,
+            rule,
+            ruleArgs,
+            actionService,
+            nodeService,
+            ruleRepository,
             nlTaskResolver,
             jsonOptions
         )

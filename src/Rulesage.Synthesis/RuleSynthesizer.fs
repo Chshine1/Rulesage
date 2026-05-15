@@ -8,6 +8,5 @@ type RuleSynthesizer(synthesisUnitFactory: SynthesisUnitFactory, nlTaskResolver:
             task {
                 let! op = nlTask |> nlTaskResolver.ResolveAsync cancellationToken
                 let unit = synthesisUnitFactory.Create cancellationToken op Map.empty
-                let! result = unit.SynthesizeAsync()
-                return result |> Map.toSeq |> readOnlyDict
+                return! unit.SynthesizeAsync()
             }

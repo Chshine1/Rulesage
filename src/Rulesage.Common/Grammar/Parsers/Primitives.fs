@@ -3,11 +3,11 @@
 type RefExpr =
     {
         ExpctedType: TypeExpr
-        Desc: StringPart list
+        Desc: StringTemplate
     }
 
 type PrimitiveExpr =
-    | StringLiteral of parts: StringPart list
+    | StringLiteral of parts: StringTemplate
     | Var of expr: VarExpr
     | Ref of expr: RefExpr
     | Array of arr: PrimitiveExpr list
