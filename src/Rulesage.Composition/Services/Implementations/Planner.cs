@@ -23,7 +23,7 @@ public class Planner(ILlmService llm) : IPlanner
 
             Output numbered steps. Prefer these patterns:
             - Rule 'id'
-            - with (param = value)
+            - with param = value
             - $N for a previous step's output
             - "natural language" for parts without a rule
             - The final step must deliver the required definition. 
@@ -36,15 +36,15 @@ public class Planner(ILlmService llm) : IPlanner
             Requirement: "All handler-related extension methods for IServiceCollection"
             
             Available rules:
-            - all-extension-method-specs-for: For a target type, this is the array of all its extension method specs.
-            - extension-method-from-spec: For an extension method spec and a type to be extended, this is its full extension method declaration.
+            - all-extension-method-specs: For a target type, this is the array of all its extension method specs.
+            - extension-method: For a type to be extended and an extension method spec, this is its full extension method declaration.
             """;
         
         const string fewShotAssistant = 
             """
-            1. Apply Rule 'all-extension-method-specs-for' with (targetType = "IServiceCollection") to get all extension method specs.
-            2. Define the subset of $1 where "the spec is handler-related (e.g., method name contains 'Handler' or description mentions handler registration)".
-            3. For each element in $2, apply Rule 'extension-method-from-spec' with (extendedType = "IServiceCollection", spec = the element). The collection of all resulting declarations is the final definition of all handler-related extension methods.
+            1. Get the array of all extension method specs, satisfying Rule 'all-extension-method-specs' with targetType = "IServiceCollection".
+            2. "Filter the subset from $1 such that the spec is handler-related."
+            3. Get the array of all resulting method declarations, each satisfying Rule 'extension-method' with extendedType = "IServiceCollection", spec = element in $2.
             """;
 
         var userPrompt =
