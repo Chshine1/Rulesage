@@ -2,11 +2,12 @@
 
 open System.Threading
 open System.Threading.Tasks
+open Rulesage.Common.Grammar.Ast
 open Rulesage.Synthesis.Types
 
 type IActionService =
     abstract member CallAsync:
         cancellationToken: CancellationToken ->
-        converterId: string ->
+        action: ActionExpr ->
         args: Map<string, SynthesizedValue> ->
             Task<SynthesizedValue>

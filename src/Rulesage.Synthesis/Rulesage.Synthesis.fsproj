@@ -16,6 +16,8 @@
 
         <Compile Include="Services\Implementations\NlTaskResolver.fs" />
 
+        <Compile Include="Services\Implementations\ActionService.fs" />
+
         <Compile Include="SynthesisContext.fs" />
       
         <Compile Include="Interpreters\Abstractions\IExprInterpreter.fs" />
@@ -45,6 +47,7 @@
 
     <ItemGroup>
         <PackageReference Update="FSharp.Core" Version="10.1.203" />
+        <PackageReference Include="MoonSharp" Version="2.0.0" />
     </ItemGroup>
 
 </Project>

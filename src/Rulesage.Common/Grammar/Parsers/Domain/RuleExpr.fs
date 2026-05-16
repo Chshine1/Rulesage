@@ -28,6 +28,7 @@ type ActionExpr =
         Annotation: string
         Fors: Map<string, ParamExpr>
         Returns: TypeExpr
+        Script: string
     }
 
 namespace Rulesage.Common.Grammar.Parsers.Domain
@@ -105,4 +106,5 @@ module Rule =
                 Annotation = a
                 Fors = fs |> Seq.map (fun f -> f.Key, f) |> Map.ofSeq
                 Returns = r
+                Script = ""
             }
