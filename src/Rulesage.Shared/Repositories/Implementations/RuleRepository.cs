@@ -38,7 +38,7 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         var mustBeJson = reader.GetString(3);
 
         var fors =
-            JsonSerializer.Deserialize<FSharpMap<string, ForExpr>>(forsJson, jsonOptions);
+            JsonSerializer.Deserialize<FSharpMap<string, ParamExpr>>(forsJson, jsonOptions);
 
         var givens =
             JsonSerializer.Deserialize<FSharpMap<string, GivenExpr>>(givensJson, jsonOptions);
@@ -86,7 +86,7 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
             var mustBeJson = r.GetString(4);
 
             var fors =
-                JsonSerializer.Deserialize<FSharpMap<string, ForExpr>>(forsJson, jsonOptions);
+                JsonSerializer.Deserialize<FSharpMap<string, ParamExpr>>(forsJson, jsonOptions);
 
             var givens =
                 JsonSerializer.Deserialize<FSharpMap<string, GivenExpr>>(givensJson, jsonOptions);

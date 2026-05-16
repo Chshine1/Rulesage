@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using Microsoft.FSharp.Collections;
 using Npgsql;
-using Rulesage.Common.Types.Domain;
+using Rulesage.Common.Grammar.Ast;
 using Rulesage.Shared.Repositories.Abstractions;
 
 namespace Rulesage.Shared.Repositories.Implementations;
@@ -19,7 +19,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         return ReadToEnumerable(reader, r => r.GetString(0));
     }
 
-    public async Task<IEnumerable<Node>> FindByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<NodeExpr>> FindByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(cancellationToken);
@@ -45,7 +45,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
             var parameters =
                 JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(2), jsonOptions);
 
-            return new Node(
+            return new NodeExpr(
                 r.GetString(0),
                 r.GetString(1),
                 parameters
@@ -53,28 +53,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         });
     }
 
-    public async Task AddAsync(string id, string description, IReadOnlyDictionary<string, ParamType> paramsMap,
-        CancellationToken cancellationToken = default)
-    {
-        await using var conn = dataSource.CreateConnection();
-        await conn.OpenAsync(cancellationToken);
-
-        await using var cmd =
-            new NpgsqlCommand(
-                """
-                INSERT INTO nodes (ir, description, parameters)
-                VALUES ($1, $2, $3)
-                """,
-                conn
-            );
-        
-        cmd.Parameters.Add(id);
-        cmd.Parameters.Add(description);
-        cmd.Parameters.Add(JsonSerializer.Serialize(paramsMap, jsonOptions));
-        await cmd.ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<(Node, float)>> FindOrderByCosineDistanceAsync(float[] queryVector, int skip, int take,
+    public async Task<IEnumerable<(NodeExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector, int skip, int take,
         CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
@@ -106,7 +85,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
                 JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(2), jsonOptions);
 
             return (
-                new Node(
+                new NodeExpr(
                     r.GetString(0),
                     r.GetString(1),
                     parameters

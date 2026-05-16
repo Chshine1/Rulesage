@@ -5,18 +5,19 @@ namespace Rulesage.Composition;
 
 public class RuleComposer(
     ICompositionContextBuilder contextBuilder,
-    ISemanticPrecomposer semanticComposer,
+    IPlanner semanticComposer,
     IGrammarGenerator grammarGenerator,
     IDslConstrainedDecoder gcd)
     : IRuleComposer
 {
     public async Task<RuleExpr> ComposeAsync(
-        string nlTask,
+        string nlStructure,
         RuleExpr[] prefetchedOperations,
+        TypeExpr? expectedType = null,
         CancellationToken cancellationToken = default)
     {
         var context = await contextBuilder.BuildAsync([], [], prefetchedOperations, cancellationToken);
-        var semantic = await semanticComposer.ComposeAsync(nlTask, context, cancellationToken);
+        var semantic = await semanticComposer.ComposeAsync(nlStructure, context, cancellationToken);
         var grammar = await grammarGenerator.GenerateAsync(context, cancellationToken);
 
         return await gcd.DecodeAsync(semantic, context, grammar, cancellationToken);

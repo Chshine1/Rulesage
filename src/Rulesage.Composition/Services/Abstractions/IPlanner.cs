@@ -1,11 +1,11 @@
-﻿using Rulesage.Common.Types.Composition;
+﻿using Rulesage.Composition.Types;
 
 namespace Rulesage.Composition.Services.Abstractions;
 
-public interface ISemanticPrecomposer
+public interface IPlanner
 {
-    Task<SemanticOperation> ComposeAsync(
-        string nlTask,
+    Task<string> PlanAsync(
+        string nlStructure,
         CompositionContext context,
         CancellationToken cancellationToken = default);
 }

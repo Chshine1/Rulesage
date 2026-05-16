@@ -1,7 +1,6 @@
 ﻿using System.Text.Json;
 using Rulesage.Cli.Commands.Nodes;
-using Rulesage.Cli.Utils;
-using Rulesage.Common.Types.Domain;
+using Rulesage.Common.Grammar.Ast;
 using Rulesage.Shared.Repositories.Abstractions;
 using Rulesage.Shared.Services.Abstractions;
 
@@ -42,7 +41,7 @@ public class NodesHandler(
         }
     }
 
-    private static void PrintDetailed(Node _)
+    private static void PrintDetailed(NodeExpr _)
     {
         throw new NotImplementedException();
     }

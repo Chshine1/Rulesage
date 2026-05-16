@@ -84,15 +84,20 @@ rule service-collection-extensions
     functionality = "DependencyInjection",
     extensionMethodSpecs = $given.specs
 
-@"All extension method specs for some type are divided into extension classes acoording to their functionalities"
+@"For a target type, this is the array of all its extension method specs."
 rule all-extension-method-specs
   for: targetType(literal)
   given:
     extensionClassSpecs: ref(node extension-class-spec[]) "All extension method specs for the extended type {$targetType}, divided into extension classes, each with a functionality"
-  must be: seq satisfying extension-class where
-    targetType = $for.targetType,
-    functionality = iter $given.extensionClassSpecs.functionality,
-    extensionMethodSpecs = iter $given.extensionClassSpecs.extensionMethodSpecs
+  must be: $given.extensionClassSpecs
+
+@"For an extension method spec and a type to be extended, this is its full extension method declaration."
+rule extension-method
+  for: spec(literal), extendedType(literal)
+  given:
+    extendedInstance: result of generate-instance-name where instanceType = $for.extendedType
+    method: ref(node method) "An extension method for {$for.extendedType} implementing: {$for.spec}. Instance to be extended not passed by `this` argument, `{$given.extendedInstance}` is used directly."
+  must be: $given.method
 
 @"An extension class implements all its extension method specs. It is declared under `Extensions/` directory, file name matching its functinality. Within the file defines a `public static class`, the class has an extension block, where all extension method specs are implemented within."
 rule extension-class
@@ -115,13 +120,6 @@ rule extension-class
     path = "Extensions/{$given.resolvedFunctionality}Extensions.cs",
     namespace = "Rulesage.Cli.Extensions",
     content = $given.fileContent
-
-@"An extension method takes the instance to be extended externally and operates it, not declaring `this` parameter. It should not rely on any external state like field or property, etc."
-rule extension-method
-  for: extendedType(literal), extendedInstance(literal), spec(literal)
-  given:
-    method: ref(node method) "An extension method for {$for.extendedType} implementing: {$for.spec}. Instance to be extended not passed by `this` argument, `{$for.extendedInstance}` is used directly."
-  must be: $given.method
 
 @""
 rule method-body
