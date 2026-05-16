@@ -14,7 +14,12 @@
         <Compile Include="Grammar\Parsers\Vars.fs" />
         <Compile Include="Grammar\Parsers\Strings.fs" />
         <Compile Include="Grammar\Parsers\Primitives.fs" />
-        <Compile Include="Grammar\Parsers\Domain.fs" />
+        <Compile Include="Grammar\Parsers\Domain\DynamicExpr.fs" />
+        <Compile Include="Grammar\Parsers\Domain\SeqExpr.fs" />
+        <Compile Include="Grammar\Parsers\Domain\ValueExpr.fs" />
+        <Compile Include="Grammar\Parsers\Domain\ForExpr.fs" />
+        <Compile Include="Grammar\Parsers\Domain\GivenExpr.fs" />
+        <Compile Include="Grammar\Parsers\Domain\RuleExpr.fs" />
         <EmbeddedResource Include="Migrations\*.sql" />
     </ItemGroup>
 

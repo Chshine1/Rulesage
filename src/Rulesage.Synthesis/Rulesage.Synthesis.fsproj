@@ -21,6 +21,10 @@
         <Compile Include="IRuleSynthesizer.fs" />
       
         <Compile Include="RuleSynthesizer.fs" />
+      
+        <Compile Include="SynthesisContext.fs" />
+      
+        <Compile Include="Interpreters\Abstractions\IExprInterpreter.fs" />
     </ItemGroup>
 
     <ItemGroup>
