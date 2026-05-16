@@ -13,6 +13,7 @@ open Rulesage.Synthesis.Types
 type SeqExprInterpreter
     (
         primitiveItp: IExprInterpreter<PrimitiveExpr>,
+        valueItp: IExprInterpreter<ValueExpr>,
         actionService: IActionService,
         nodeService: INodeService,
         ruleRepository: IRuleRepository
@@ -97,15 +98,13 @@ type SeqExprInterpreter
                         task {
                             let! subRule = ruleRepository.FindByIdAsync(ruleId, ct)
 
-                            let subUnit =
-                                ctx.Factory
-                                    {
-                                        CtSource = CancellationTokenSource.CreateLinkedTokenSource(ct)
-                                        Rule = subRule
-                                        ForArgs = withValues
-                                        Factory = ctx.Factory
-                                    }
+                            let subCtx: SynthesisContext =
+                                {
+                                    CtSource = CancellationTokenSource.CreateLinkedTokenSource(ctx.CtSource.Token)
+                                    Rule = subRule
+                                    ForArgs = withValues
+                                }
 
-                            return! subUnit.SynthesizeAsync()
+                            return! valueItp.InterpretAsync subCtx subRule.MustBe
                         }
                     )

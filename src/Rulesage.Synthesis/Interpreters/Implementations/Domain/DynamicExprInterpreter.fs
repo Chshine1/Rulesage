@@ -13,6 +13,7 @@ open Rulesage.Synthesis.Types
 type DynamicExprInterpreter
     (
         primitiveItp: IExprInterpreter<PrimitiveExpr>,
+        valueItp: IExprInterpreter<ValueExpr>,
         actionService: IActionService,
         nodeService: INodeService,
         ruleRepository: IRuleRepository
@@ -47,14 +48,12 @@ type DynamicExprInterpreter
                     let! subRule = ruleRepository.FindByIdAsync(ruleId, ctx.CtSource.Token)
                     let! whereValues = synthesizeArgsAsync ctx args
 
-                    let subUnit =
-                        ctx.Factory
-                            {
-                                CtSource = CancellationTokenSource.CreateLinkedTokenSource(ctx.CtSource.Token)
-                                Rule = subRule
-                                ForArgs = whereValues
-                                Factory = ctx.Factory
-                            }
+                    let subCtx: SynthesisContext =
+                        {
+                            CtSource = CancellationTokenSource.CreateLinkedTokenSource(ctx.CtSource.Token)
+                            Rule = subRule
+                            ForArgs = whereValues
+                        }
 
-                    return! subUnit.SynthesizeAsync()
+                    return! valueItp.InterpretAsync subCtx subRule.MustBe
             }

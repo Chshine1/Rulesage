@@ -6,10 +6,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="SynthesisContext.fs" />
-        <Compile Include="SynthesisUnit.fs" />
-        <Compile Include="IRuleSynthesizer.fs" />
-        <Compile Include="RuleSynthesizer.fs" />
         <Compile Include="Types\SynthesizedValue.fs" />
 
         <Compile Include="Services\Abstractions\IActionService.fs" />
@@ -19,6 +15,8 @@
         <Compile Include="Services\Abstractions\INlTaskResolver.fs" />
 
         <Compile Include="Services\Implementations\NlTaskResolver.fs" />
+
+        <Compile Include="SynthesisContext.fs" />
       
         <Compile Include="Interpreters\Abstractions\IExprInterpreter.fs" />
       
@@ -33,6 +31,10 @@
         <Compile Include="Interpreters\Implementations\Domain\SeqExprInterpreter.fs" />
       
         <Compile Include="Interpreters\Implementations\Domain\ValueExprInterpreter.fs" />
+      
+        <Compile Include="IRuleSynthesizer.fs" />
+      
+        <Compile Include="RuleSynthesizer.fs" />
     </ItemGroup>
 
     <ItemGroup>

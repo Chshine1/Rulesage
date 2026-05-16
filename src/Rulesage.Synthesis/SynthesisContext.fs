@@ -9,5 +9,4 @@ type SynthesisContext =
         CtSource: CancellationTokenSource
         Rule: RuleExpr
         ForArgs: Map<string, SynthesizedValue>
-        Factory: SynthesisContext -> SynthesisUnit
     }
