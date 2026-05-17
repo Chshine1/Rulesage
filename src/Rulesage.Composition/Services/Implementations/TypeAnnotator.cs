@@ -92,11 +92,10 @@ public class TypeAnnotator(ILlmService llm): ITypeAnnotator
 
     private const string AssistantFewShotFinal =
         """
-        CALL_CHAIN
-        1. allServices: Get all service interfaces, satisfying rule 'all-service-interfaces' :: string[]
-        2. registrationLines: For each element in $allServices, produce a registration line using action 'format-registration-line' with interfaceName = element :: string[]
-        3. sortedLines: "The lines in $registrationLines deduplicated and sorted alphabetically." :: string[]
-        4. csFile: Construct node 'cs-file' with namespace = "MyApp.Services", usings = ["Microsoft.Extensions.DependencyInjection"], lines = $sortedLines :: node cs-file
+        allServices: Get all service interfaces, satisfying rule 'all-service-interfaces' :: string[]
+        registrationLines: Produce a sequence of registration line using action 'format-registration-line' with interfaceName = element in $allServices :: string[]
+        sortedLines: "The lines in $registrationLines deduplicated and sorted alphabetically." :: string[]
+        csFile: Construct node 'cs-file' with namespace = "MyApp.Services", usings = ["Microsoft.Extensions.DependencyInjection"], lines = $sortedLines :: node cs-file
         """;
 
     public async Task<string> AnnotateAsync(string nlStructure, string plan, CancellationToken cancellationToken = default)

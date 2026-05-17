@@ -66,7 +66,7 @@ module Rule =
     let private pMustBeExpr: Parser<ValueExpr, ParseContext> =
         skipString "must be" >>. skipString ":" >>. pValueExpr
 
-    let private pRule: Parser<RuleExpr, ParseContext> =
+    let pRule: Parser<RuleExpr, ParseContext> =
         pAnnotation .>> skipString "rule"
         .>>. pId
         .>>. pParamBlock "for"
@@ -81,7 +81,7 @@ module Rule =
                 MustBe = m
             }
 
-    let private pNode: Parser<NodeExpr, ParseContext> =
+    let pNode: Parser<NodeExpr, ParseContext> =
         pAnnotation .>> skipString "node"
         .>>. pId
         .>>. pParamBlock "with"
@@ -95,7 +95,7 @@ module Rule =
     let private pReturnsExpr: Parser<TypeExpr, ParseContext> =
         skipString "returns" >>. skipString ":" >>. pTypeExpr
 
-    let private pAction: Parser<ActionExpr, ParseContext> =
+    let pAction: Parser<ActionExpr, ParseContext> =
         pAnnotation .>> skipString "action"
         .>>. pId
         .>>. pParamBlock "on"

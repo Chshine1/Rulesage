@@ -6,8 +6,8 @@ namespace Rulesage.Composition.Services.Abstractions;
 public interface IDslConstrainedDecoder
 {
     Task<RuleExpr> DecodeAsync(
-        string semanticOperation,
+        string nlStructure, 
+        string annotatedPlan,
         CompositionContext compositionContext,
-        Grammar grammar,
         CancellationToken cancellationToken = default);
 }
