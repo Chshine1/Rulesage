@@ -6,6 +6,6 @@ public interface ITypeAnnotator
 {
     Task<string> AnnotateAsync(
         string nlStructure,
-        CompositionContext context,
+        string plan,
         CancellationToken cancellationToken = default);
 }
