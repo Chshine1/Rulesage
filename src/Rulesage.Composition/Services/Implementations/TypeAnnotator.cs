@@ -7,7 +7,7 @@ public class TypeAnnotator(ILlmService llm): ITypeAnnotator
 {
     private const string SystemPrompt =
         """
-        Transform a requirement and a step-by-step plan into a type-annotated call chain.
+        Transform a structure to be strictly defined and a step-by-step plan into a type-annotated call chain.
         Work interactively, one section per turn, in this order:
         
         1. REQUEST_SIGNATURES
@@ -32,76 +32,78 @@ public class TypeAnnotator(ILlmService llm): ITypeAnnotator
              None
            - Optionally, include an INSIGHTS block to record your current understanding of the plan's semantics.
         
-        3. CALL_CHAIN
-           Once you have all necessary types and semantics, output the final type-annotated chain.
-           - Format:
-             <step>. <action description> :: <output type>
-                - <detail: rule name or quoted natural language, with inline parameters>
-           - Keep all parameters concrete. Preserve natural-language gaps in double quotes.
-           - If a type contradiction is unresolvable, output: ERROR: <explanation>
+        3. ANNOTATED PLAN
+            With all necessary types and semantics, output the plan annotated with types and dataflow.
+            Follow these patterns:
+            - Start a step with `key: description :: output_type`
+            - Preserve natural-language parts in double quotes
+            - Use rule 'id', node 'id', action 'id' to reference capabilities
+            - Iteration can be expressed as `element in $key` in the description where $key is the iterated array
+            - If a type contradiction is unresolvable, output ERROR: <explanation>
         
         Be minimal: request only what's necessary.
         """;
 
     private const string UserFewShotInit =
         """
-        Requirement: "All handler-related extension methods for IServiceCollection"
-        
+        Target structure: "A CsFile node containing deduplicated and sorted service registrations for all service interfaces"
+
         Plan:
-        1. Get the array of all extension method specs, satisfying Rule 'all-extension-method-specs' with targetType = "IServiceCollection".
-        2. "Filter the subset from $1 such that the spec is handler-related."
-        3. Get the array of all resulting method declarations, each satisfying Rule 'extension-method' with extendedType = "IServiceCollection", spec = element in $2.
+        allServices: Get all service interfaces, satisfying rule 'all-service-interfaces'
+        registrationLines: Produce a sequence of registration lines, each as the result of action 'format-registration-line' with interfaceName = an element of $allServices
+        sortedLines: "The lines in $registrationLines deduplicated and sorted alphabetically."
+        csFile: Construct node 'cs-file' with namespace = "MyApp.Services", usings = ["Microsoft.Extensions.DependencyInjection"], lines = $sortedLines
         """;
 
     private const string AssistantFewShotSignaturesRequest =
         """
         REQUEST_SIGNATURES
-        - rules: all-extension-method-specs, extension-method
-        
+        - rules: all-service-interfaces
+        - nodes: cs-file
+        - actions: format-registration-line
+
         ASSUMPTIONS
-        - Step 1 produces an array of node instances, each should represent an extension method's spec.
+        - all-service-interfaces likely returns an array of interface names (string[]).
+        - format-registration-line maps an interface name to a string.
+        - cs-file needs to be clarified: its properties namespace, usings, lines.
         """;
 
-    // TODO: Complete this
     private const string UserFewShotSignaturesResponse =
         """
-        rule all-extension-method-specs: (targetType: literal) -> node extension-method-spec[]
-        rule extension-method-from-spec: (extendedType: literal, spec: node extension-method-spec) -> node method
-        node extension-method-spec: { name: literal, parameters: ..., attributes: [...] }
-        node method: { signature: literal, body: ... }
+        rule all-service-interfaces: () -> string[]
+        node cs-file: { namespace: string, usings: string[], lines: string[] }
+        action format-registration-line: (interfaceName: string) -> string
         """;
 
     private const string AssistantFewShotDescriptionsRequest =
         """
         REQUEST_DESCRIPTIONS
-        - node: extension-method-spec
-        
+        - actions: format-registration-line
+
         INSIGHTS
-        - The filter in step 2 needs to identify handler-related specs via attributes or name.
+        - The action's exact output format is ambiguous: does it produce a full registration statement like "services.AddSingleton<...>()"?
+        - The plan will use it to generate lines of code, so the exact string shape matters.
         """;
 
-    // TODO
     private const string UserFewShotDescriptionResponse =
         """
-        node extension-method-spec: ""
+        action format-registration-line: "Generates a service registration statement: 'services.AddSingleton<I{interfaceName}, {interfaceName}>();' using the interface's simple name."
         """;
 
     private const string AssistantFewShotFinal =
         """
         CALL_CHAIN
-        1. GET all extension method specs :: node extension-method-spec[]
-           - Rule 'all-extension-method-specs-for' with targetType = "IServiceCollection"
-        2. NATURAL LANGUAGE :: node extension-method-spec[]
-           - "Filter the subset from $1 such that the spec is handler-related."
-        3. FOR EACH spec in $2, GET method declaration :: node method[]
-           - Rule 'extension-method-from-spec' with extendedType = "IServiceCollection", spec = element of $2
+        1. allServices: Get all service interfaces, satisfying rule 'all-service-interfaces' :: string[]
+        2. registrationLines: For each element in $allServices, produce a registration line using action 'format-registration-line' with interfaceName = element :: string[]
+        3. sortedLines: "The lines in $registrationLines deduplicated and sorted alphabetically." :: string[]
+        4. csFile: Construct node 'cs-file' with namespace = "MyApp.Services", usings = ["Microsoft.Extensions.DependencyInjection"], lines = $sortedLines :: node cs-file
         """;
 
     public async Task<string> AnnotateAsync(string nlStructure, string plan, CancellationToken cancellationToken = default)
     {
         var userPrompt =
             $"""
-             Requirement: "{nlStructure}"
+             Target structure: "{nlStructure}"
 
              Plan:
              {plan}
@@ -113,7 +115,7 @@ public class TypeAnnotator(ILlmService llm): ITypeAnnotator
             new() { Role = LlmMessage.MessageRole.User, Content = UserFewShotInit },
             new() { Role = LlmMessage.MessageRole.Assistant, Content = AssistantFewShotSignaturesRequest },
             new() { Role = LlmMessage.MessageRole.User, Content = UserFewShotSignaturesResponse },
-            new() { Role = LlmMessage.MessageRole.System, Content = AssistantFewShotDescriptionsRequest },
+            new() { Role = LlmMessage.MessageRole.Assistant, Content = AssistantFewShotDescriptionsRequest },
             new() { Role = LlmMessage.MessageRole.User, Content = UserFewShotDescriptionResponse },
             new() { Role = LlmMessage.MessageRole.Assistant, Content = AssistantFewShotFinal },
             new() { Role = LlmMessage.MessageRole.User, Content = userPrompt }

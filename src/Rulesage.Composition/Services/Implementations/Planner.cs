@@ -9,17 +9,17 @@ public class Planner(ILlmService llm) : IPlanner
     private const string SystemPrompt = 
         """
         Transform a structure to be strictly defined into a step-by-step plan using the provided rules, nodes, and actions.
-        - Rules express definitions: "(For <parameters>,) ... must be ...".
-        - Nodes are structures you can construct with named properties.
-        - Actions are operations that take parameters and produce a result.
+        - Rules express definitions: "(For <parameters>,) ... must be ..."
+        - Nodes are structures you can construct with named properties
+        - Actions are operations that take parameters and produce a result
         Think of the target structure as "What should X be?" and define X by composing rules, nodes and actions.
 
         Output semantically keyed steps. Prefer these patterns:
-        - Rule <id>, Node <id>, Action <id>
+        - rule 'id', node 'id', action 'id'
         - with param = value
         - $key for a previous step's output
         - "natural language" for parts without a rule/node/action
-        - The final step must deliver the required definition. 
+        - The final step must deliver the required definition
 
         A single step suffices if it directly answers the requirement.
         """;
@@ -29,21 +29,21 @@ public class Planner(ILlmService llm) : IPlanner
         Target structure: "A CsFile node containing deduplicated and sorted service registrations for all service interfaces"
         
         Available rules:
-        - all-service-interfaces: This is the array of all service interface types.
+        - all-service-interfaces: This is the array of all service interface types
         
         Available nodes:
-        - cs-file: A node representing a C# file, with properties: namespace, usings, lines.
+        - cs-file: A node representing a C# file, with properties: namespace, usings, lines
         
         Available actions:
-        - format-registration-line: Takes an interface name and returns a service registration statement as a string.
+        - format-registration-line: Takes an interface name and returns a service registration statement as a string
         """;
 
     private const string FewShotAssistant = 
         """
-        allServices: Get all service interfaces, satisfying Rule 'all-service-interfaces'.
-        registrationLines: Produce a sequence of registration lines, each as the result of Action 'format-registration-line' with interfaceName = an element of $allServices.
+        allServices: Get all service interfaces, satisfying rule 'all-service-interfaces'
+        registrationLines: Produce a sequence of registration lines, each as the result of action 'format-registration-line' with interfaceName = an element of $allServices
         sortedLines: "The lines in $registrationLines deduplicated and sorted alphabetically."
-        csFile: Construct Node 'cs-file' with namespace = "MyApp.Services", usings = ["Microsoft.Extensions.DependencyInjection"], lines = $sortedLines.
+        csFile: Construct node 'cs-file' with namespace = "MyApp.Services", usings = ["Microsoft.Extensions.DependencyInjection"], lines = $sortedLines
         """;
     
     public async Task<string> PlanAsync(
