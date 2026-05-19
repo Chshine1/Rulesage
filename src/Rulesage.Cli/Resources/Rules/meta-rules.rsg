@@ -1,0 +1,18 @@
+﻿@"A type in the type system consisting of a string *name* that's either 'literal'(string) or 'node <node-id>' or their arrays by appending '[]', can be multiple for higher dimensional array"
+node type with name(literal)
+
+@"For a natural language simple expectation of a node type, its actual type is a standardized node type"
+rule node-type for nlType(literal)
+given:
+  represents: ref(literal) "An atomic, domain-independent object which {$for.nlType} tries to represent"
+  id: ref(literal) "The hyphen-separated id describing the represented object: {$given.represents}"
+must be:
+  node type with name = "node {$given.id}"
+
+@"A rule spec consisting of a *subject* kind to be standardized, a *subjectParams* description of the inputs/context needed to retrieve or derive the concrete subject instances, a *type* the standardized instance will be of, and a *description* detailing the standardization logic using those params"
+node rule-spec with
+  subject(literal), subjectParams(literal), type(node type), description(literal)
+
+@"For a natural language rule, its rule spec is a standardized node rule-spec"
+rule rule-spec for nlRule(literal)
+must be: ref(node rule-spec) "For {$for.nlRule}, the subject identifies a kind of object that needs constraint, subjectParams provides the necessary inputs or contextual data from which concrete subject instances can be extracted or constructed. When it's standardized, it would be of an expected type, and an inner description of what the standardization logic"
