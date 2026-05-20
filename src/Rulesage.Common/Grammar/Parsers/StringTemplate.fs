@@ -4,7 +4,7 @@ type StringPart =
     | Literal of string
     | Interpolation of var: VarExpr
 
-type StringTemplate = StringPart list
+type StringTemplate = StringPart seq
 
 namespace Rulesage.Common.Grammar.Parsers
 
@@ -32,10 +32,8 @@ module Strings =
         choice [ pEscaped; pInterpolation; pNormalChar ]
 
     let pSingleLineString: Parser<StringTemplate, ParseContext> =
-        between (pstring "\"") (pstring "\"") (many pStringPart)
+        sepBy1 (between (skipChar '\"') (skipChar '\"') (many pStringPart)) (skipChar '+') |>> Seq.concat
 
     let pAnnotation: Parser<string, ParseContext> =
-        between
-            (skipString "@\"")
-            (skipString "\"")
-            (manyChars (choice [ noneOf "\"\\\n"; skipString "\\\\" >>% '\\'; skipString "\\\"" >>% '"' ]))
+        let pSection = between (skipChar '\"') (skipChar '\"') (manyChars (choice [ noneOf "\"\\\n"; skipString "\\\\" >>% '\\'; skipString "\\\"" >>% '"'; skipString "\\n" >>% '\n' ]))
+        skipChar '@' >>. sepBy1 pSection (skipChar '+') |>> String.concat ""

@@ -1,4 +1,5 @@
-﻿@"A type in the type system consisting of a string *name* that's either 'literal'(string) or 'node <node-id>' or their arrays by appending '[]', can be multiple for higher dimensional array"
+﻿@"A type in the type system consisting of a string *name* that's either 'literal'(string) or 'node <node-id>' "
++"or their arrays by appending '[]', can be multiple for higher dimensional array"
 node type with name(literal)
 
 @"For a natural language simple expectation of a node type, its actual type is a standardized node type"
@@ -9,10 +10,70 @@ given:
 must be:
   node type with name = "node {$given.id}"
 
-@"A rule spec consisting of a *subject* kind to be standardized, a *subjectParams* description of the inputs/context needed to retrieve or derive the concrete subject instances, a *type* the standardized instance will be of, and a *description* detailing the standardization logic using those params"
+@"A rule spec consisting of a *subject* kind to be standardized, "
++"a *subjectParams* description of the inputs/context needed to retrieve or derive the concrete subject instances, "
++"a *type* the standardized instance will be of, and a *description* detailing the standardization logic using those params"
 node rule-spec with
   subject(literal), subjectParams(literal), type(node type), description(literal)
 
 @"For a natural language rule, its rule spec is a standardized node rule-spec"
 rule rule-spec for nlRule(literal)
-must be: ref(node rule-spec) "For {$for.nlRule}, the subject identifies a kind of object that needs constraint, subjectParams provides the necessary inputs or contextual data from which concrete subject instances can be extracted or constructed. When it's standardized, it would be of an expected type, and an inner description of what the standardization logic"
+must be: ref(node rule-spec) 
+            "For {$for.nlRule}, the subject identifies a kind of object that needs constraint, "
+           +"subjectParams provides the necessary inputs or contextual data from which concrete subject instances can be extracted or constructed. "
+           +"When it's standardized, it would be of an expected type, and an inner description of what the standardization logic"
+
+@"A tuple consisting of a pair of literal values"
+node tuple with val1(literal), val2(literal)
+
+@"A blueprint value in a rule, encoded as an expression string, yielding a concrete value after binding 'for' parameters. Must be one of"
++"primitive: variable(($for|$given).<key>.fields), literal(var-interpolated string using `{}`), array, or 'ref(<type>) \"var-interpolated desc\"' for a described object of expected type. "
++"dynamic: 'node <node-id> with key=value,...' | 'satisfying <rule-id> where key=value,...' | 'result of <action-id> where key=value,...', passing primitive expr args. "
++"sequential: 'seq' + a dynamic expr, with optional 'iter' prefix on args (key=[iter] value), producing a sequence, and setting `iter` makes an array arg finally passed as each of its element"
+node rule-value with expr(literal)
+
+@""
+rule rule-value for valueSpec(literal)
+given:
+  analysis: ref(node tuple<literal,literal>) 
+               "Classification of {$for.valueSpec} into primitive|dynamic|sequential (first element) and a short analysis chain (second element)"
+  primitive:
+    node tuple<literal,literal> with val1="primitive",
+      val2="primitive, identify whether it is a variable reference (use $for.xxx or $given.xxx), "
+          +"a literal string (wrap in single quotes), an array (list elements), or a described object (use ref(<type>) \"description\"). "
+          +"Use the analysis to decide the exact primitive form."
+  dynamic:
+    node tuple<literal,literal> with val1="dynamic",
+      val2="dynamic, determine the operation kind ('node','satisfying','result of'), the target id, "
+          +"and the key=value pairs where values are primitive expressions. "
+          +"Assemble as '<op> <id> with|where k=v, ...' using the analysis for any details."
+  sequential:
+    node tuple<literal,literal> with val1="sequential",
+      val2="sequential, follow the dynamic pattern but prefix 'seq', and decide if any key should have 'iter' prefix "
+          +"(meaning the value is an array to iterate over). "
+          +"Form: 'seq <op> <id> with|where k=[iter]v, ...' as appropriate."
+  branch: result of switch-cases where value=$given.analysis.val1, cases=[$given.primitive, $given.dynamic, $given.sequential]
+must be:
+  ref(node rule-value) "An expr describing {$for.valueSpec}, {$given.branch}. Analysis: {$given.analysis.val2}"
+
+@"A rule consisting of an *annotation* describing 'a (possibly parameterized) subject must be what a standardized value', "
++"an *id*, a dictionary *for* of key-type parametrizing the subject, "
++"a dictionary *given* of key-ruleValue for the intermediate steps, "
++"and *mustBe* of a ruleValue as the final standardized value of the subject"
+node rule-meta with
+  annotation(literal), id(literal),
+  for(node tuple<literal, node type>[]),
+  given(node tuple<literal, node rule-value>[]),
+  mustBe(node rule-value)
+
+rule rule-meta for spec(node rule-spec)
+given:
+  annotation: ref(literal)
+                 "A single-line string close to '(For {$for.spec.subjectParams}) {$for.spec.subject} must be {$for.spec.type}', "
+                +"slightly modified for semantical smoothness"
+  id: ref(literal) "A hyphen-separated string id for {$for.spec.subject}"
+  for: ref(node tuple<literal, node type>[])
+          "A dictionary of key-type for subject params: {$for.spec.subjectParams} parametrizing {$for.spec.subject}, "
+         +"where a kv-pair consists of a string camelCase key for a parameter and a value of the type needed for the param"
+  interalSteps: ref(node tuple<literal, literal>[]) "A dictionary"
+  
