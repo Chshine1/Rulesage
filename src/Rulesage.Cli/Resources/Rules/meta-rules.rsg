@@ -24,7 +24,7 @@ must be: ref(node rule-spec)
            +"When it's standardized, it would be of an expected type, and an inner description of what the standardization logic"
 
 @"A tuple consisting of a pair of literal values"
-node tuple with val1(literal), val2(literal)
+node tuple<t1, t2> with val1(t1), val2(t2)
 
 @"A blueprint value in a rule, encoded as an expression string, yielding a concrete value after binding 'for' parameters. Must be one of"
 +"primitive: variable(($for|$given).<key>.fields), literal(var-interpolated string using `{}`), array, or 'ref(<type>) \"var-interpolated desc\"' for a described object of expected type. "
@@ -32,11 +32,14 @@ node tuple with val1(literal), val2(literal)
 +"sequential: 'seq' + a dynamic expr, with optional 'iter' prefix on args (key=[iter] value), producing a sequence, and setting `iter` makes an array arg finally passed as each of its element"
 node rule-value with expr(literal)
 
-@""
+@"Has two generic type params tk and tv, accepts a *value* tk, a dictionary *branches* of tk-tv pairs, then returns the tv-value of the pair whose key is the given tk-key"
+action switch-cases<tk, tv> on value(tk), branches(node tuple<tk, tv>[]) returns: tv
+
+@"For a rule value spec, its actual rule value implementation is a rule value node"
 rule rule-value for valueSpec(literal)
 given:
   analysis: ref(node tuple<literal,literal>) 
-               "Classification of {$for.valueSpec} into primitive|dynamic|sequential (first element) and a short analysis chain (second element)"
+               "Classification of {$for.valueSpec} into 'primitive'|'dynamic'|'sequential' (first element) and a short analysis chain (second element)"
   primitive:
     node tuple<literal,literal> with val1="primitive",
       val2="primitive, identify whether it is a variable reference (use $for.xxx or $given.xxx), "
