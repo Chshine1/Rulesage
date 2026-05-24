@@ -22,11 +22,11 @@ open Rulesage.Common.Grammar.Parsers.Primitives
 
 module Dynamic =
     let private pArgExpr: Parser<ArgExpr, ParseContext> =
-        pKey .>> skipString "=" .>>. pPrimitiveExpr
+        pKey .>> skipChar '=' .>>. pPrimitiveExpr
         |>> fun (k, v) -> { Key = k; Value = v }
 
     let private pArgBlock (keyword: string) : Parser<ArgBlock, ParseContext> =
-        opt (skipString keyword >>. sepBy1 pArgExpr (skipString ","))
+        opt (skipString keyword >>. sepBy1 pArgExpr (skipChar ','))
         |>> fun ol ->
             match ol with
             | Some l -> l

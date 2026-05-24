@@ -27,11 +27,11 @@ open Rulesage.Common.Grammar.Parsers.Primitives
 
 module Seq =
     let private pIterArgExpr: Parser<IterArgExpr, ParseContext> =
-        pKey .>> skipString "=" .>>. opt (skipString "iter") .>>. pPrimitiveExpr
+        pKey .>> skipChar '=' .>>. opt (skipString "iter") .>>. pPrimitiveExpr
         |>> fun ((k, o), v) -> { Key = k; Value = v; Iter = o.IsSome }
 
     let private pIterArgBlock (keyword: string) : Parser<IterArgBlock, ParseContext> =
-        opt (skipString keyword >>. sepBy1 pIterArgExpr (skipString ","))
+        opt (skipString keyword >>. sepBy1 pIterArgExpr (skipChar ','))
         |>> fun ol ->
             match ol with
             | Some l -> l

@@ -24,7 +24,7 @@ module Strings =
                 ]
 
         let pInterpolation =
-            between (skipString "{") (skipString "}") Vars.pVarExpr
+            between (skipChar '{') (skipChar '}') Vars.pVarExpr
             |>> StringPart.Interpolation
 
         let pNormalChar = noneOf "\"\\\n{" |>> fun c -> StringPart.Literal(string c)

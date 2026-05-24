@@ -47,12 +47,12 @@ action retrieveSimilarUnits on query(literal) returns record UnitSummary[]
 @"Interprets a natural language type description phrase into a TypeSpec."
 rule interpret-type-spec for typeDesc(literal)
 given:
-  availableUnits: result of retrieveSimilarUnits where query = typeDesc
-  groupedUnits: result of groupBy<record UnitSummary> where array = availableUnits, groupKey = "unitType"
-  availableRecords: result of findInDictionary<literal, record UnitSummary[]> where dictionary = groupedUnits, key = "record"
-  baseId: ref(literal) "the base type identifier that corresponds to the type described by '{typeDesc}'. It must be one of 'literal', or a record id in {availableRecords}, or a generic parameter name."
-  arrayLayers: ref(literal) "the number of array layers, for example, 0 for `literal`, \"an array of strings\" should be 1, and \"an array of string arrays\" is also allowed, having layer 2."
-must be: ref(TypeSpec) "the fully assembled type id string, composed of {baseId}, having {arrayLayers} layers of array represented by appending that number of suffixes '[]'"
+  availableUnits: result of retrieveSimilarUnits where query = $for.typeDesc
+  groupedUnits: result of groupBy<record UnitSummary> where array = $given.availableUnits, groupKey = "unitType"
+  availableRecords: result of findInDictionary<literal, record UnitSummary[]> where dictionary = $given.groupedUnits, key = "record"
+  baseId: ref(literal) "the base type identifier that corresponds to the type described by '{$for.typeDesc}'. It must be one of 'literal', or a record id in {$given.availableRecords}, or a generic parameter name."
+  arrayLayers: ref(literal) "the number of array layers for {$for.typeDesc}, for example, 0 for `literal`, \"an array of strings\" should be 1, and \"an array of string arrays\" is also allowed, having layer 2."
+must be: ref(TypeSpec) "the fully assembled type id string, composed of {$given.baseId}, having {$given.arrayLayers} layers of array represented by appending that number of suffixes '[]'"
 
 @"A rule definition. Contains an id, an annotation, its formal parameters (for-block), local bindings (given-block), and the final value expression (must-be)."
 record RuleDef with
@@ -81,33 +81,33 @@ record ValueExpr with dslText(literal)
 +"\nThe description shouldn't define new record shapes/actions inline. If also shouldn't just be a trivial extraction like output merely copies an input field; The interpretation must add structural/domain constraints, etc."
 rule interpret-rule-def for rawText(literal)
 given:
-  subject: satisfying identify-def-subject where description = rawText
+  ruleId: satisfying identify-def-subject where description = $for.rawText
   rawAnnotation:
-    ref(literal) "the natural language annotation for this rule, describing the subject contract, taken from: {rawText}"
+    ref(literal) "the natural language annotation for this rule, describing the subject contract, taken from: {$for.rawText}"
   annotation: satisfying canonicalize-annotation where
-    rawAnnot = rawAnnotation, subjectType = "rule", subjectId = ruleId, details = ""
+    rawAnnot = $given.rawAnnotation, subjectType = "rule", subjectId = $given.ruleId, details = ""
   rawForParams:
-    ref(record Tuple<literal, literal>[]) "the formal parameters of the rule as described in: {rawText}. Each is a pair: parameter name and its natural language type description."
-  forParamTypes: seq satisfying interpret-type-spec where typeDesc = iter rawForParams.val2
+    ref(record Tuple<literal, literal>[]) "the formal parameters of the rule as described in: {$for.rawText}. Each is a pair: parameter name and its natural language type description."
+  forParamTypes: seq satisfying interpret-type-spec where typeDesc = iter $given.rawForParams.val2
   typedForParams: seq record Tuple<literal, record TypeSpec> with
-    val1 = iter rawForParams.val1,
-    val2 = iter forParamTypes
+    val1 = iter $given.rawForParams.val1,
+    val2 = iter $given.forParamTypes
   rawGivenBindings:
-    ref(record Tuple<literal, literal>[]) "the intermediate bindings described in: {rawText}, where each binding has a name and a natural language expression description."
-  givenBindingTypes: seq satisfying interpret-type-spec where typeDesc = iter rawGivenBindings.val2
+    ref(record Tuple<literal, literal>[]) "the intermediate bindings described in: {$for.rawText}, where each binding has a name and a natural language expression description."
+  givenBindingTypes: seq satisfying interpret-type-spec where typeDesc = iter $given.rawGivenBindings.val2
   givenBindings: seq record Tuple<literal, record ValueExpr> with
-    val1 = iter rawGivenBindings.val1,
-    val2 = iter givenBindingTypes
+    val1 = iter $given.rawGivenBindings.val1,
+    val2 = iter $given.givenBindingTypes
   mustBePhrase:
-    ref(literal) "the natural language description of the final value expression (the 'must be' part) in: {rawText}"
-  mustBe: satisfying interpret-value-expr where phrase = mustBePhrase
+    ref(literal) "the natural language description of the final value expression (the 'must be' part) in: {$for.rawText}"
+  mustBe: satisfying interpret-value-expr where phrase = $given.mustBePhrase
 must be:
   record RuleDef with
-    id = ruleId,
-    annotation = annotation,
-    forParams = typedForParams,
-    givenBindings = givenBindings,
-    mustBe = mustBe
+    id = $given.ruleId,
+    annotation = $given.annotation,
+    forParams = $given.typedForParams,
+    givenBindings = $given.givenBindings,
+    mustBe = $given.mustBe
 
 @"A record definition. It has a unique identifier *id*, an array *fields* of the full set of mandatory fields (a key-type typle for each), and an annotation that is the complete structural contract of the type (including any grammar syntax when applicable)."
 record RecordDef with
@@ -118,25 +118,25 @@ record RecordDef with
 +"\nIt shouldn't contain any behavioural rules, any executable action definitions."
 rule interpret-record-def for rawText(literal)
 given:
-  subject: satisfying interpret-def-subject where description = rawText
+  recordId: satisfying interpret-def-subject where description = $for.rawText
   rawAnnotation:
-    ref(literal) "the natural language description that serves as the annotation for the record '{subject}', taken from: {rawText}. It should describe the purpose and contract of this record type."
-  fieldDescs: satisfying interpret-fields where recordDescription = rawText
-  fieldTypes: seq satisfying interpret-type-spec where typeDesc = iter fieldDescs.val2
+    ref(literal) "the natural language description that serves as the annotation for the record '{$given.recordId}', taken from: {$for.rawText}. It should describe the purpose and contract of this record type."
+  fieldDescs: satisfying interpret-fields where recordDescription = $for.rawText
+  fieldTypes: seq satisfying interpret-type-spec where typeDesc = iter $given.fieldDescs.val2
   constructedFields:
     seq record Tuple<literal, record TypeSpec> with
-      val1 = iter fieldDescs.val1,
-      val2 = iter fieldTypes
+      val1 = iter $given.fieldDescs.val1,
+      val2 = iter $given.fieldTypes
   detailsForAnnot:
-    ref(literal) "a structured summary of the fields: {constructedFields}"
+    ref(literal) "a structured summary of the fields: {$given.constructedFields}"
   canonicalAnnotation: satisfying canonicalize-annotation where
-    rawAnnot = rawAnnotation, subjectType = "record",
-    subjectId = recordId, details = detailsForAnnot
+    rawAnnot = $given.rawAnnotation, subjectType = "record",
+    subjectId = $given.recordId, details = $given.detailsForAnnot
 must be:
   record RecordDef with
-    id = recordId,
-    fields = constructedFields,
-    annotation = canonicalAnnotation
+    id = $given.recordId,
+    fields = $given.constructedFields,
+    annotation = $given.canonicalAnnotation
 
 @"An action definition. Contains the action's name, annotation, formal parameters, output type, and an actual Lua script implementation of the action."
 record ActionDef with
@@ -151,30 +151,30 @@ record ActionDef with
 +"\nIt shouldn't describe a record shape or a behavioural rule, nor do rule‑specific interpretations."
 rule interpret-action-def for rawText(literal)
 given:
-  subject: satisfying identify-def-subject where description = rawText
-  rawAnnotation: ref(literal) "the natural language annotation for the action, taken from: {rawText}"
+  actionName: satisfying identify-def-subject where description = $for.rawText
+  rawAnnotation: ref(literal) "the natural language annotation for the action, taken from: {$for.rawText}"
   annotation: satisfying canonicalize-annotation where
-    rawAnnot = rawAnnotation, subjectType = "action", subjectId = actionName, details = ""
+    rawAnnot = $given.rawAnnotation, subjectType = "action", subjectId = $given.actionName, details = ""
   rawParams:
-    ref(record Tuple<literal, literal>[]) "the formal parameters described in: {rawText}"
-  paramTypes: seq satisfying interpret-type-spec where typeDesc = iter rawParams.val2
+    ref(record Tuple<literal, literal>[]) "the formal parameters described in: {$for.rawText}"
+  paramTypes: seq satisfying interpret-type-spec where typeDesc = iter $given.rawParams.val2
   typedParams: seq record Tuple<literal, record TypeSpec> with
-    val1 = iter rawParams.val1,
-    val2 = iter paramTypes
+    val1 = iter $given.rawParams.val1,
+    val2 = iter $given.paramTypes
   outputTypeDesc:
-    ref(literal) "the natural language description of the output type, as stated in: {rawText}"
-  outputType: satisfying interpret-type-spec where typeDesc = outputTypeDesc
+    ref(literal) "the natural language description of the output type, as stated in: {$for.rawText}"
+  outputType: satisfying interpret-type-spec where typeDesc = $given.outputTypeDesc
   operationDesc:
-    ref(literal) "the pure, domain-independent operation description extracted from: {rawText}. This description should state what the action does without referencing business logic."
+    ref(literal) "the pure, domain-independent operation description extracted from: {$for.rawText}. This description should state what the action does without referencing business logic."
   luaScript:
-    ref(literal) "a Lua script that implements an action with name '{actionName}', parameters {typedParams}, output type {outputType}, and operation: '{operationDesc}'"
+    ref(literal) "a Lua script that implements an action with name '{$given.actionName}', parameters {$given.typedParams}, output type {$given.outputType}, and operation: '{$given.operationDesc}'"
 must be:
   record ActionDef with
-    name = subject,
-    annotation = annotation,
-    params = typedParams,
-    outputType = outputType,
-    luaScript = luaScript
+    name = $given.actionName,
+    annotation = $given.annotation,
+    params = $given.typedParams,
+    outputType = $given.outputType,
+    luaScript = $given.luaScript
 
 @"Describe a section in the ruleset, containing the full definitions or records/rules/actions, respectively."
 record RulesetSection with
@@ -189,15 +189,15 @@ action findSectionInRuleset on query(record RulesetQuery) returns record Ruleset
 +"\nIt returns an array of UnitSummary entries for the ruleset units that are semantically relevant to that expectation."
 rule interpret-relevant-units for expectationPhrase(literal)
 given:
-  rawSummaries: result of retrieveSimilarUnits where query = expectationPhrase
-  groupedSummaries: result of groupBy<record UnitSummary> where array = rawSummaries, groupKey = "unitType"
-  recordSummaries: result of findInDictionary<literal, record UnitSummary[]> where dictionary = groupedSummaries, key = "record"
-  ruleSummaries: result of findInDictionary<literal, record UnitSummary[]> where dictionary = groupedSummaries, key = "rule"
-  actionsSummaries: result of findInDictionary<literal, record UnitSummary[]> where dictionary = groupedSummaries, key = "action"
-  rulesetQuery: ref(record RulesetQuery) "the ids of ruleset units within records: {recordSummaries}, rules: {ruleSummaries}, actions: {actionSummaries}, which need their details queried to meet the expectation: {expectationPhrase}"
-must be: result of findSectionInRuleset where query = rulesetQuery
+  rawSummaries: result of retrieveSimilarUnits where query = $for.expectationPhrase
+  groupedSummaries: result of groupBy<record UnitSummary> where array = $given.rawSummaries, groupKey = "unitType"
+  recordSummaries: result of findInDictionary<literal, record UnitSummary[]> where dictionary = $given.groupedSummaries, key = "record"
+  ruleSummaries: result of findInDictionary<literal, record UnitSummary[]> where dictionary = $given.groupedSummaries, key = "rule"
+  actionsSummaries: result of findInDictionary<literal, record UnitSummary[]> where dictionary = $given.groupedSummaries, key = "action"
+  rulesetQuery: ref(record RulesetQuery) "the ids of ruleset units within records: {$given.recordSummaries}, rules: {$given.ruleSummaries}, actions: {$given.actionSummaries}, which need their details queried to meet the expectation: {$for.expectationPhrase}"
+must be: result of findSectionInRuleset where query = $given.rulesetQuery
 
 @"Interprets a literal project items expectation into a literal expectation of a ruleset item."
 rule interpret-project-items for expectationPhrase(literal)
 must be:
-  rulesetExp = ref(literal) "an expectation literal of existing ruleset items which fully describe the expectation for project items: {expectationPhrase}"
+  rulesetExp = ref(literal) "an expectation literal of existing ruleset items which fully describe the expectation for project items: {$for.expectationPhrase}"

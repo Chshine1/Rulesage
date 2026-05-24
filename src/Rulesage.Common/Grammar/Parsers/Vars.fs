@@ -22,7 +22,7 @@ module Vars =
         choice [ skipString "$for" >>% VarSource.For; skipString "$given" >>% VarSource.Given ]
 
     let private pVarSegment (source: VarSource) : Parser<string, ParseContext> =
-        skipString "." >>. Lexer.pKey
+        skipChar '.' >>. Lexer.pKey
         >>= fun key ->
             fun stream ->
                 let keys =
@@ -37,5 +37,5 @@ module Vars =
     let pVarExpr: Parser<VarExpr, ParseContext> =
         pVarSource
         >>= fun source ->
-            pVarSegment source .>>. many (skipString "." >>. Lexer.pKey)
+            pVarSegment source .>>. many (skipChar '.' >>. Lexer.pKey)
             |>> fun (k, f) -> { Source = source; Key = k; Fields = f }

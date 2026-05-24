@@ -20,7 +20,7 @@ open Rulesage.Common.Grammar.Ast
 
 module Primitives =
     let pRef: Parser<RefExpr, ParseContext> =
-        skipString "ref" >>. between (skipString "(") (skipString ")") Types.pTypeExpr
+        skipString "ref" >>. between (skipChar '(') (skipChar ')') Types.pTypeExpr
         .>>. Strings.pSingleLineString
         |>> fun (t, s) -> { ExpctedType = t; Desc = s }
 
@@ -28,7 +28,7 @@ module Primitives =
         createParserForwardedToRef<PrimitiveExpr, ParseContext> ()
 
     let private pArrayExpr: Parser<PrimitiveExpr, ParseContext> =
-        between (skipString "[") (skipString "]") (sepBy pPrimitiveExpr (skipString ","))
+        between (skipChar '[') (skipChar ']') (sepBy pPrimitiveExpr (skipChar ','))
         |>> PrimitiveExpr.Array
 
     pPrimitiveExprRef.Value <-

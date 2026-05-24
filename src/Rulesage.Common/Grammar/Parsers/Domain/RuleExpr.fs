@@ -43,28 +43,28 @@ open Rulesage.Common.Grammar.Parsers.Types
 
 module Rule =
     let private pParamExpr: Parser<ParamExpr, ParseContext> =
-        pKey .>> skipString "(" .>>. pTypeExpr .>> skipString ")"
+        pKey .>> skipChar '(' .>>. pTypeExpr .>> skipChar ')'
         |>> fun (k, t) -> { Key = k; Type = t }
 
     let private pParamBlock (keyword: string): Parser<ParamExpr list, ParseContext> =
-        opt (skipString keyword >>. skipString ":" >>. sepBy1 pParamExpr (skipString ","))
+        opt (skipString keyword >>. skipChar ':' >>. sepBy1 pParamExpr (skipChar ','))
         |>> fun ol ->
             match ol with
             | Some l -> l
             | None -> []
     
     let private pGivenExpr: Parser<GivenExpr, ParseContext> =
-        pKey .>> skipString ":" .>>. pValueExpr |>> fun (k, v) -> { Key = k; Value = v }
+        pKey .>> skipChar ':' .>>. pValueExpr |>> fun (k, v) -> { Key = k; Value = v }
 
     let private pGivenBlock: Parser<GivenExpr list, ParseContext> =
-        opt (skipString "given" >>. skipString ":" >>. many1 pGivenExpr)
+        opt (skipString "given" >>. skipChar ':' >>. many1 pGivenExpr)
         |>> fun ol ->
             match ol with
             | Some l -> l
             | None -> []
     
     let private pMustBeExpr: Parser<ValueExpr, ParseContext> =
-        skipString "must be" >>. skipString ":" >>. pValueExpr
+        skipString "must be" >>. skipChar ':' >>. pValueExpr
 
     let pRule: Parser<RuleExpr, ParseContext> =
         pAnnotation .>> skipString "rule"
@@ -93,7 +93,7 @@ module Rule =
             }
     
     let private pReturnsExpr: Parser<TypeExpr, ParseContext> =
-        skipString "returns" >>. skipString ":" >>. pTypeExpr
+        skipString "returns" >>. skipChar ':' >>. pTypeExpr
 
     let pAction: Parser<ActionExpr, ParseContext> =
         pAnnotation .>> skipString "action"
