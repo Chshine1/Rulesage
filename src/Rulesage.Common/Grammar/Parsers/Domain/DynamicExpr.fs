@@ -9,7 +9,7 @@ type ArgBlock = ArgExpr list
 type DynamicExpr =
     | Satisfying of ruleId: Identifier * args: ArgBlock
     | ResultOf of actionId: Identifier * args: ArgBlock
-    | Record of nodeId: NodeSignature * args: ArgBlock
+    | Record of nodeId: Identifier * args: ArgBlock
 
 
 namespace Rulesage.Common.Grammar.Parsers.Domain
@@ -42,6 +42,6 @@ module Dynamic =
                 |>> DynamicExpr.Satisfying
                 skipString "result of" >>. s1 >>. pId .>> s1 .>>. (pArgBlock "where")
                 |>> DynamicExpr.ResultOf
-                skipString "record" >>. s1 >>. pRecordId .>> s1 .>>. (pArgBlock "with")
+                skipString "record" >>. s1 >>. pId .>> s1 .>>. (pArgBlock "with")
                 |>> DynamicExpr.Record
             ]

@@ -2,7 +2,7 @@
 
 type AtomicType =
     | Literal
-    | Node of id: string
+    | Record of id: string
 
 type TypeExpr = { Atomic: AtomicType; Dimension: int }
 
@@ -20,7 +20,7 @@ module Types =
         choice
             [
                 skipString "literal" >>% AtomicType.Literal
-                skipString "record" >>. s1 >>. pRecordId |>> fun n -> AtomicType.Node n.id
+                skipString "record" >>. s1 >>. pRecordId |>> fun n -> AtomicType.Record n.id
             ]
 
     let pTypeExpr: Parser<TypeExpr, ParseContext> =
