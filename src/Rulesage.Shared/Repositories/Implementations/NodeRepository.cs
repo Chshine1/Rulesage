@@ -19,7 +19,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         return ReadToEnumerable(reader, r => r.GetString(0));
     }
 
-    public async Task<IEnumerable<NodeExpr>> FindByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<RecordExpr>> FindByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(cancellationToken);
@@ -45,7 +45,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
             var parameters =
                 JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(2), jsonOptions);
 
-            return new NodeExpr(
+            return new RecordExpr(
                 r.GetString(0),
                 r.GetString(1),
                 parameters
@@ -53,7 +53,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         });
     }
 
-    public async Task<IEnumerable<(NodeExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector, int skip, int take,
+    public async Task<IEnumerable<(RecordExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector, int skip, int take,
         CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
@@ -85,7 +85,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
                 JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(2), jsonOptions);
 
             return (
-                new NodeExpr(
+                new RecordExpr(
                     r.GetString(0),
                     r.GetString(1),
                     parameters

@@ -41,7 +41,7 @@ public class NodesHandler(
         }
     }
 
-    private static void PrintDetailed(NodeExpr _)
+    private static void PrintDetailed(RecordExpr _)
     {
         throw new NotImplementedException();
     }

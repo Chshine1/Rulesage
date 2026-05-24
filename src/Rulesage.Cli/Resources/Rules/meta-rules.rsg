@@ -37,9 +37,7 @@ record UnitSummary with
 
 @"A collection of ids (of records/rules/actions, respectively), which describes a query against the quleset requiring units of these ids."
 record RulesetQuery with
-  recordIds: literal[]
-  ruleIds: literal[]
-  actionIds: literal[]
+  recordIds(literal[]), ruleIds(literal[]), actionIds(literal[])
 
 @"Find units in the ruleset by semantic similarity to a literal query, return the similar units as an array of record UnitSummary."
 action retrieveSimilarUnits on query(literal) returns record UnitSummary[]
@@ -178,9 +176,7 @@ must be:
 
 @"Describe a section in the ruleset, containing the full definitions or records/rules/actions, respectively."
 record RulesetSection with
-  records: RecordDef[]
-  rules: RuleDef[]
-  actions: ActionDef[]
+  records(RecordDef[]), rules(RuleDef[]), actions(ActionDef[])
 
 @"From a RulesetQuery which describes the desired ids, find the corresponding RulesetSection matching these query ids."
 action findSectionInRuleset on query(record RulesetQuery) returns record RulesetSection

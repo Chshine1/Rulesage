@@ -15,7 +15,7 @@ type RuleExpr =
         MustBe: ValueExpr
     }
 
-type NodeExpr =
+type RecordExpr =
     {
         Id: Identifier
         Annotation: string
@@ -42,35 +42,38 @@ open Rulesage.Common.Grammar.Parsers.Strings
 open Rulesage.Common.Grammar.Parsers.Types
 
 module Rule =
+    let private s = spaces
+    let private s1 = spaces1
+    
     let private pParamExpr: Parser<ParamExpr, ParseContext> =
-        pKey .>> skipChar '(' .>>. pTypeExpr .>> skipChar ')'
+        pKey .>> s .>> skipChar '(' .>> s .>>. pTypeExpr .>> s .>> skipChar ')'
         |>> fun (k, t) -> { Key = k; Type = t }
 
     let private pParamBlock (keyword: string): Parser<ParamExpr list, ParseContext> =
-        opt (skipString keyword >>. skipChar ':' >>. sepBy1 pParamExpr (skipChar ','))
+        opt (skipString keyword >>. s1 >>. sepBy1 pParamExpr (s .>> skipChar ',' .>> s))
         |>> fun ol ->
             match ol with
             | Some l -> l
             | None -> []
     
     let private pGivenExpr: Parser<GivenExpr, ParseContext> =
-        pKey .>> skipChar ':' .>>. pValueExpr |>> fun (k, v) -> { Key = k; Value = v }
+        pKey .>> s .>> skipChar ':' .>> s .>>. pValueExpr |>> fun (k, v) -> { Key = k; Value = v }
 
     let private pGivenBlock: Parser<GivenExpr list, ParseContext> =
-        opt (skipString "given" >>. skipChar ':' >>. many1 pGivenExpr)
+        opt (skipString "given" >>. s >>. skipChar ':' >>. s >>. sepBy1 pGivenExpr s1)
         |>> fun ol ->
             match ol with
             | Some l -> l
             | None -> []
     
     let private pMustBeExpr: Parser<ValueExpr, ParseContext> =
-        skipString "must be" >>. skipChar ':' >>. pValueExpr
+        skipString "must be" >>. s >>. skipChar ':' >>. s >>. pValueExpr
 
     let pRule: Parser<RuleExpr, ParseContext> =
-        pAnnotation .>> skipString "rule"
-        .>>. pId
-        .>>. pParamBlock "for"
-        .>>. pGivenBlock
+        pAnnotation .>> s .>> skipString "rule" .>> s1
+        .>>. (pId .>> s1)
+        .>>. (pParamBlock "for" .>> s1)
+        .>>. (pGivenBlock .>> s1)
         .>>. pMustBeExpr
         |>> fun ((((a, i), fs), gs), m) ->
             {
@@ -81,9 +84,9 @@ module Rule =
                 MustBe = m
             }
 
-    let pNode: Parser<NodeExpr, ParseContext> =
-        pAnnotation .>> skipString "node"
-        .>>. pId
+    let pRecord: Parser<RecordExpr, ParseContext> =
+        pAnnotation .>> s .>> skipString "record" .>> s1
+        .>>. (pId .>> s1)
         .>>. pParamBlock "with"
         |>> fun ((a, i), fs) ->
             {
@@ -93,12 +96,12 @@ module Rule =
             }
     
     let private pReturnsExpr: Parser<TypeExpr, ParseContext> =
-        skipString "returns" >>. skipChar ':' >>. pTypeExpr
+        skipString "returns" >>. s >>. skipChar ':' >>. s >>. pTypeExpr
 
     let pAction: Parser<ActionExpr, ParseContext> =
-        pAnnotation .>> skipString "action"
-        .>>. pId
-        .>>. pParamBlock "on"
+        pAnnotation .>> s .>> skipString "action" .>> s1
+        .>>. (pId .>> s1)
+        .>>. (pParamBlock "on" .>> s1)
         .>>. pReturnsExpr
         |>> fun (((a, i), fs), r) ->
             {

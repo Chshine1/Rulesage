@@ -7,7 +7,7 @@ public interface ICompositionContextBuilder
 {
     public Task<CompositionContext> BuildAsync(
         RuleExpr[] availableRules,
-        NodeExpr[] availableNodes,
+        RecordExpr[] availableNodes,
         ActionExpr[] availableActions,
         CancellationToken cancellationToken = default);
 }
