@@ -1,13 +1,12 @@
 ﻿# 1. Meta‑Specification: The System Describing Itself
 
-The engine’s own abstract syntax is described using the same kind of definitions. This self‑description serves as the **bootstrap specification**: it allows the engine to interpret the very definitions that constitute it, enabling validation, tooling, and evolution.
-
 The system described here is a specification‑only engine. It defines the static shape of types, rules, and values, and the normative rules for decomposing natural‑language subjects into structured interpretations. The actual execution of `ref` interpretations and user‑defined actions is delegated to an external, black‑box runtime; this specification does not prescribe how that runtime works.
 
-## 1.1 Meta‑Types
+It only does "interpretation", and modifications like "replace a rule" are also interpreted, like interpreted to a standardized modification node.
 
-The following record types are part of the engine's built‑in knowledge. They define the structure of a specification. All record fields are **mandatory**; the full shape of any instance is given by the combination of these fields and the type's annotation.
+## Meta‑Ruleset
 
+```text
 @"A generic tuple of two values"
 record Tuple<t1, t2> with val1(t1), val2(t2)
 
@@ -20,38 +19,6 @@ action findInDictionary<tk, tv> on dictionary(record Tuple<tk, tv>[]), key(tk) r
 @"A type spec reference. It only has a literal string *typeId*, which must be of `type-id := base-id ("[]")?`, and `base-id = "literal" | ("record" record-id generic-params) | type-id`. Here generic params are passed as `"<"t1,t2,...">"` if needed, and `t1,t2` are again type identifiers or generic names provided a generic context."
 record TypeSpec with typeId(literal)
 
-*Note: generic params not considered*
-@"A record definition. It has a unique identifier *id*, an array *fields* of the full set of mandatory fields (a key-type typle for each), and an annotation that is the complete structural contract of the type (including any grammar syntax when applicable)."
-record RecordDef with
-  annotation(literal), id(literal), fields(record Tuple<literal, record TypeSpec>[])
-
-@"A value expression appearing in a rule, represented as a literal field whose value is a string in the ValueExpr DSL.
-  The DSL is a line‑based format. Each line is one of:
-    - `var <name> [.<field> ...]`: variable reference with optional field path.
-    - `"<template>"`: interpolated string.
-    - `ref(<type>) "<subject>"`: sub‑interpretation. `<subject>` is a natural‑language noun phrase that describes the value the system is to construct; `<type>` is the expected type for the product.
-    - `array [ <elem1>, <elem2>, ...]`: array literal.
-    - `record <typeId> with <field1> = <expr>, <field2> = <expr>, ...`: record construction.
-    - `satisfying <ruleId> where <arg1> = <expr>, ...`: definite rule call.
-    - `result of <actionName> where <arg1> = <expr>, ...`: action call.
-    - `seq <innerKind> <arg1> = (iter)? <expr>, ...`: sequential evaluation, where innerKind is `record...with`, `satisfying...where`, or `result of...where`, and `iter` is an optional keyword for expressions.  
-  All expressions that appear as arguments inside another expression are themselves represented as DSL strings."
-record ValueExpr with dslText(literal)
-
-@"A rule definition. Contains an id, an annotation, its formal parameters (for-block), local bindings (given-block), and the final value expression (must-be)."
-record RuleDef with
-  id(literal), annotation(literal),
-  forParams(record Tuple<literal, record TypeSpec>[]),
-  givenBindings(record Tuple<literal, record ValueExpr>[]),  
-  mustBe(record ValueExpr)
-
-@"An action definition. Contains the action's name, annotation, formal parameters, output type, and an actual Lua script implementation of the action."
-record ActionDef with
-  name(literal), annotation(literal),
-  params(record Tuple<literal, record TypeSpec>[]),
-  outputType(record TypeSpec),
-  luaScript(literal)
-
 @"An add-record operation. It contains the complete RecordDef to be added to the ruleset."
 record AddRecordDef with unit(record RecordDef)
 
@@ -59,7 +26,7 @@ record AddRecordDef with unit(record RecordDef)
 record AddRuleDef with unit(record RuleDef)
 
 @"An add-action operation. It contains the complete ActionDef to be added to the ruleset."
-record AddActionDef with unit(record ActionDef)
+record AddAction with unit(record ActionDef)
 
 @"A removal operation. It identifies a unit of a given type (among 'rule'|'record'|'action') to be removed by its unique id."
 record RemoveRulesetUnit with type(literal), unitId(literal)
@@ -73,132 +40,180 @@ record ReplaceRuleDef with newUnit(record RuleDef)
 @"A replace-action operation. It provides the new full ActionDef whose id is the id of the target action to be replaced."
 record ReplaceActionDef with newUnit(record ActionDef)
 
-@"A structured plan that collects all atomic modification operations generated from a single change request. Each field is an array of one specific operation type. The arrays together fully describe the intended transformation of the ruleset."
-record ModificationPlan with
-  addRecords(record AddRecordDef[]),
-  addRules(record AddRuleDef[]),
-  addActions(record AddActionDef[]),
-  removeUnits(record RemoveRulesetUnit[]),
-  replaceRecords(record ReplaceRecordDef[]),
-  replaceRules(record ReplaceRuleDef[]),
-  replaceActions(record ReplaceActionDef[])
-
-@"Modification Root: Interprets a natural‑language description of changes to the ruleset into a concrete ModificationPlan containing only explicit add, remove, and replace operations. This rule must be used whenever an input implies altering the ruleset's content. It prevents ad‑hoc bundling of multiple changes into a single rule and ensures every atomic modification is explicitly represented."
-rule modify-ruleset for changeDescription(literal)
-given:
-  breakdown: ref(record ChangeItem[]) "the structured classification of the change request '{changeDescription}', identifying each individual modification item as an add, remove, or replace, and specifying the target type (record, rule, or action)"
-  addRecords: ref(record AddRecordDef[]) "all new RecordDefs that must be added, each interpreted from the corresponding add‑record items in {breakdown}"
-  addRules: ref(record AddRuleDef[]) "all new RuleDefs that must be added, each interpreted from the corresponding add‑rule items in {breakdown}"
-  addActions: ref(record AddActionDef[]) "all new ActionDefs that must be added, each interpreted from the corresponding add‑action items in {breakdown}"
-  removeUnits: ref(record RemoveRulesetUnit[]) "all unit ids that must be removed, directly extracted from the remove items in {breakdown}"
-  replaceRecords: ref(record ReplaceRecordDef[]) "all replacement RecordDefs, each synthesised by taking the old definition (known from the ruleset by id) and applying the described modifications for the replace‑record items in {breakdown}"
-  replaceRules: ref(record ReplaceRuleDef[]) "all replacement RuleDefs, each synthesised analogously for replace‑rule items in {breakdown}"
-  replaceActions: ref(record ReplaceActionDef[]) "all replacement ActionDefs, each synthesised analogously for replace‑action items in {breakdown}"
-must be:
-  record ModificationPlan with
-    addRecords = addRecords,
-    addRules = addRules,
-    addActions = addActions,
-    removeUnits = removeUnits,
-    replaceRecords = replaceRecords,
-    replaceRules = replaceRules,
-    replaceActions = replaceActions
-
-@"A single atomic change item extracted from a description. It indicates the operation (among 'add'|'remove'|'replace'), the target unit type('record'|'rule'|'action'), the target unit id (for adds this may be the intended new id or empty if it must be inferred), and the natural‑language description of the change payload (empty for removal)."
-record ChangeItem with
-  operation(literal),
-  unitType(literal),
-  unitId(literal),
-  payload(literal)
-
-@"Interpret Change Item: Given a natural‑language phrase, produce a single ChangeItem if the phrase describes exactly one atomic modification to the ruleset
-  An atomic modification is defined by the following criteria:
-  - It refers to exactly one target unit, identified by its id (for an existing unit) or by a clear new name (for a new unit).
-  - It expresses exactly one operation intent: 'add' (introduce a new unit), 'remove' (delete an existing unit by id), or 'replace' (modify an existing unit by providing a new full definition, which incorporates the described changes).
-  - The phrase must not contain implicit sequencing (e.g., 'first add X then remove Y') or combined actions on multiple units (e.g., 'add X and update Y'). If such composite intent is present, the phrase must be split before applying this rule."
-rule interpret-change-item for phrase(literal)
-given:
-  operation: ref(literal) "the operation kind: 'add', 'remove', or 'replace', inferred from the phrase '{phrase}'"
-  unitType: ref(literal) "the unit type: 'record', 'rule', or 'action', inferred from the phrase and the context of what is being modified"
-  unitId: ref(literal) "the id of the affected unit; for an add, this is the proposed new id (may be empty if it must be generated later); for remove or replace, it is the existing id"
-  payload: ref(literal) "for add and replace, the natural‑language description of what the new definition should contain; for remove, this must be empty"
-must be:
-  record ChangeItem with
-    operation = operation,
-    unitType = unitType,
-    unitId = unitId,
-    payload = payload
-
-@"Helper"
-record RuleOutline with id(literal), annotation(literal)
-
-@"Interprets a natural language description of a rule definition and returns a RuleDef node.
-The description must encode knowledge that cannot be mechanically derived from the structure of its output.
-Trivial extractions (e.g., directly returning a field from the input without additional constraints) are forbidden."
-rule interpret-rule-def for rawText(literal)
-given:
-  outline: ref(record RuleOutline) "the rule identifier and its annotation extracted from the text: {rawText}"
-  forParams: ref(record Tuple<literal, record TypeSpec>[]) "the array of formal parameter declarations (for‑block) found in: {rawText}"
-  givenBindings: ref(record Tuple<literal, record ValueExpr>[]) "the array of given bindings found in: {rawText}"
-  mustBeText: ref(literal) "the natural‑language phrase that describes the 'must be' value expression in: {rawText}"
-  mustBe: ref(record ValueExpr) "the ValueExpr node corresponding to the value expression phrase: {mustBeText}"
-must be:
-  record RuleDef with
-  id = outline.id, annotation = outline.annotation,
-  forParams = forParams, givenBindings = givenBindings, mustBe = mustBe
-
-@"Interprets the annotation for a rule. The annotation must contain subject contract that the rule declares to its callers: it must describe the characteristics of a subject that the rule is legitimately capable of interpreting, allowing caller to organise the subject into a compliant form before the call."
-rule interpret-rule-annotation for rawText(literal)
-must be: ref(literal) "A rule annotation for {$for.rawText}. It must describe/constrain its interpretation subject, which allows the referer to know \"what subject should be passed so that this rule can interpret it\"."
-
-@"Interprets a natural‑language description of a ref subject, where the ref subject must be declarative (not some command/call) and undetermined, that is, not containing any explicit reference to any definite rule/action existing in the ruleset. The rule produces a ValueExpr node containing the corresponding DSL string 'ref(<type>) \"<subject>\"'."
-rule interpret-ref-call for refDescription(literal)
-given:
-  subjectPart: ref(literal) "the noun phrase that describes the value to be constructed, as contained in the ref call description: {refDescription}"
-  expectedType: ref(literal) "the type name given after 'as' in the ref call description: {refDescription}"
-  dsl = ref(literal) "ref({expectedType}) \"{subjectPart}\""
-must be: record ValueExpr with dslText = dsl
-
-@"Given a natural language phrase describing a value expression, produce a ValueExpr node. When the phrase describes a ref sub‑interpretation, the rule delegates to interpret-ref-call to enforce the subject‑style form. Otherwise, it wraps the phrase into a DSL string following the ValueExpr DSL specification."
-rule interpret-value-expr for phrase(literal)
-given:
-  isRefCall: ref(literal) "whether the phrase {phrase} describes a ref sub‑interpretation (i.e., it contains an 'as' clause and the leading part describes a value)"
-  refDslText: ref(record ValueExpr) "if {isRefCall} is true, interpret the phrase as a ref call using interpret-ref-call with refDescription: {phrase}; otherwise return an empty ValueExpr (dslText='')"
-  defaultDslText: ref(literal) "if {isRefCall} is false, the ValueExpr DSL string that represents the natural language phrase '{phrase}', following the DSL specification"
-  dslText: ref(literal) "if {isRefCall} is true, use the dslText from {refDslText}; otherwise use {defaultDslText}"
-must be: record ValueExpr with dslText = dslText
-
-@"Helper"
-record TypeBasics with name(literal), rawAnnotation(literal)
-
-@"Interprets a natural language description of a record definition only with structure/shape, not as a rule/standard source. Returns a RecordDef node. The process extracts the mandatory fields and synthesizes the complete shape annotation, which may incorporate a grammar specification"
-rule interpret-record-def for rawText(literal)
-given:
-  basics: ref(record TypeBasics) "the record name and the raw annotation paragraph contained in the text: {rawText}"
-  fieldDecls: ref(record Tuple<literal, literal>[]) "all mandatory field declarations (each with a name and a type description) found in: {rawText}"
-  fieldTypes: ref(record TypeSpec[]) "the field definitions with each type fixed as a type spec reference that specifies the type description, transformed from {fieldDecls.val2}"
-  constructedFields: seq record Tuple<literal, record TypeSpec> with val1=iter fieldDecls.val1, val2=iter fieldTypes
-  canonicalAnnotation: ref(literal) "the complete shape annotation for type {basics.name}, which refines and formalizes the raw annotation '{basics.rawAnnotation}', incorporates the fields {fieldDecls}, and covers any mentioned DSL specification. It is a self-contained description of the type's structure, field contracts, and, if applicable, the DSL grammar and semantics."
-must be:
-  record RecordDef with
-    id = basics.name, fields = constructedFields, annotation = canonicalAnnotation
-
 @"A compact description of a single ruleset unit, containing its unique id, its unit type (\"record\"|\"rule\"|\"action\"), and its natural language annotation."
 record UnitSummary with
   id(literal), unitType(literal), annotation(literal)
 
+@"A collection of ids (of records/rules/actions, respectively), which describes a query against the quleset requiring units of these ids"
 record RulesetQuery with
   recordIds: literal[]
   ruleIds: literal[]
   actionIds: literal[]
 
+@"Find units in the ruleset by semantic similarity to a literal query, return the similar units as an array of record UnitSummary"
+action retrieveSimilarUnits on query(literal) returns record UnitSummary[]
+
+**Question: Generic parameters?**
+@"Interprets a natural language type description phrase into a TypeSpec."
+rule interpret-type-spec for typeDesc(literal)
+given:
+  availableUnits: result of retrieveSimilarUnits where query = typeDesc
+  groupedUnits: result of groupBy<record UnitSummary> where array = availableUnits, groupKey = "unitType"
+  availableRecords: result of findInDictionary<literal, record UnitSummary[]> where dictionary = groupedUnits, key = "record"
+  baseId: ref(literal) "the base type identifier that corresponds to the type described by '{typeDesc}'. It must be one of 'literal', or a record id in {availableRecords}, or a generic parameter name."
+  arrayLayers: ref(literal) "the number of array layers, for example, 0 for `literal`, \"an array of strings\" should be 1, and \"an array of string arrays\" is also allowed, having layer 2."
+must be: ref(TypeSpec) "the fully assembled type id string, composed of {baseId}, having {arrayLayers} layers of array represented by appending that number of suffixes '[]'"
+```
+
+### 1. Rules
+
+```text
+@"A rule definition. Contains an id, an annotation, its formal parameters (for-block), local bindings (given-block), and the final value expression (must-be)."
+record RuleDef with
+  id(literal), annotation(literal),
+  forParams(record Tuple<literal, record TypeSpec>[]),
+  givenBindings(record Tuple<literal, record ValueExpr>[]),  
+  mustBe(record ValueExpr)
+
+@"A value expression appearing in a rule, represented as a literal field whose value is a string in the ValueExpr DSL.
+The DSL is a line‑based format. Each line is one of:
+  - `var <name> [.<field> ...]`: variable reference with optional field path.
+  - `"<template>"`: interpolated string.
+  - `ref(<type>) "<subject>"`: sub‑interpretation. `<subject>` is a natural‑language noun phrase that describes the value the system is to construct; `<type>` is the expected type for the product.
+  - `array [ <elem1>, <elem2>, ...]`: array literal.
+  - `record <typeId> with <field1> = <expr>, <field2> = <expr>, ...`: record construction.
+  - `satisfying <ruleId> where <arg1> = <expr>, ...`: definite rule call.
+  - `result of <actionName> where <arg1> = <expr>, ...`: action call.
+  - `seq <innerKind> <arg1> = (iter)? <expr>, ...`: sequential evaluation, where innerKind is `record...with`, `satisfying...where`, or `result of...where`, and `iter` is an optional keyword for expressions.  
+All expressions that appear as arguments inside another expression are themselves represented as DSL strings."
+record ValueExpr with dslText(literal)
+```
+
+---
+
+```text
+"Interprets a natural-language text that describes exactly one rule definition into a RuleDef
+It must be declarative and interprative: it states what will be interpreted to what a standardized form, not the procedure to execute something.
+It should describe a subject to be interpreted, which may be parametrized among a whole subject type, then steps of intermediate interpretations/actions/record constructions. They should finally build to a standardized instance, which is \"what this subject will be interpreted to\".
+The constraint can be put on the subject for the interpretation to run at better performance
+The description shouldn't define new record shapes/actions inline. If also shouldn't just be a trivial extraction like output merely copies an input field; The interpretation must add structural/domain constraints, etc."
+rule interpret-rule-def for rawText(literal)
+given:
+  subject: satisfying identify-def-subject where description = rawText
+  rawAnnotation:
+    ref(literal) "the natural language annotation for this rule, describing the subject contract, taken from: {rawText}"
+  annotation: satisfying canonicalize-annotation where
+    rawAnnot = rawAnnotation, subjectType = "rule", subjectId = ruleId, details = ""
+  rawForParams:
+    ref(record Tuple<literal, literal>[]) "the formal parameters of the rule as described in: {rawText}. Each is a pair: parameter name and its natural language type description."
+  forParamTypes: seq satisfying interpret-type-spec where typeDesc = iter rawForParams.val2
+  typedForParams: seq record Tuple<literal, record TypeSpec> with
+    val1 = iter rawForParams.val1,
+    val2 = iter forParamTypes
+  rawGivenBindings:
+    ref(record Tuple<literal, literal>[]) "the intermediate bindings described in: {rawText}, where each binding has a name and a natural language expression description."
+  givenBindingTypes: seq satisfying interpret-type-spec where typeDesc = iter rawGivenBindings.val2
+  givenBindings: seq record Tuple<literal, record ValueExpr> with
+    val1 = iter rawGivenBindings.val1,
+    val2 = iter givenBindingTypes
+  mustBePhrase:
+    ref(literal) "the natural language description of the final value expression (the 'must be' part) in: {rawText}"
+  mustBe: satisfying interpret-value-expr where phrase = mustBePhrase
+must be:
+  record RuleDef with
+    id = ruleId,
+    annotation = annotation,
+    forParams = typedForParams,
+    givenBindings = givenBindings,
+    mustBe = mustBe
+```
+
+### 2. Records
+
+```text
+*Note: generic params should also be included*
+@"A record definition. It has a unique identifier *id*, an array *fields* of the full set of mandatory fields (a key-type typle for each), and an annotation that is the complete structural contract of the type (including any grammar syntax when applicable)."
+record RecordDef with
+  annotation(literal), id(literal), fields(record Tuple<literal, record TypeSpec>[])
+
+@"Interprets a natural-language text that describes exactly one record type definition into a standardized RecordDef
+The description must declare all mandatory fields with their names and a detailed type and structural description. And it should be purely structural and declarative: describing what shape the data has, not how it is computed or when it is used
+It shouldn't contain any behavioural rules, any executable action definitions."
+rule interpret-record-def for rawText(literal)
+given:
+  subject: satisfying interpret-def-subject where description = rawText
+  rawAnnotation:
+    ref(literal) "the natural language description that serves as the annotation for the record '{subject}', taken from: {rawText}. It should describe the purpose and contract of this record type."
+  fieldDescs: satisfying interpret-fields where recordDescription = rawText
+  fieldTypes: seq satisfying interpret-type-spec where typeDesc = iter fieldDescs.val2
+  constructedFields:
+    seq record Tuple<literal, record TypeSpec> with
+      val1 = iter fieldDescs.val1,
+      val2 = iter fieldTypes
+  detailsForAnnot:
+    ref(literal) "a structured summary of the fields: {constructedFields}"
+  canonicalAnnotation: satisfying canonicalize-annotation where
+    rawAnnot = rawAnnotation, subjectType = "record",
+    subjectId = recordId, details = detailsForAnnot
+must be:
+  record RecordDef with
+    id = recordId,
+    fields = constructedFields,
+    annotation = canonicalAnnotation
+```
+
+### 3. Actions
+
+```text
+@"An action definition. Contains the action's name, annotation, formal parameters, output type, and an actual Lua script implementation of the action."
+record ActionDef with
+  name(literal), annotation(literal),
+  params(record Tuple<literal, record TypeSpec>[]),
+  outputType(record TypeSpec),
+  luaScript(literal)
+
+@"Interprets a natural-language text that describes exactly one action definition into an ActionDef.
+The description must describe an \"action\", which is to be applied to a set of typed parameters.
+Then describe a domain-indepentent, atomic operation on these params which does not contain any semantic logic, any rule/action call, and isn't a simple action composable from field accessing/record construction. This needs to produce a final result.
+It shouldn't describe a record shape or a behavioural rule, nor do rule‑specific interpretations."
+rule interpret-action-def for rawText(literal)
+given:
+  subject: satisfying identify-def-subject where description = rawText
+  rawAnnotation: ref(literal) "the natural language annotation for the action, taken from: {rawText}"
+  annotation: satisfying canonicalize-annotation where
+    rawAnnot = rawAnnotation, subjectType = "action", subjectId = actionName, details = ""
+  rawParams:
+    ref(record Tuple<literal, literal>[]) "the formal parameters described in: {rawText}"
+  paramTypes: seq satisfying interpret-type-spec where typeDesc = iter rawParams.val2
+  typedParams: seq record Tuple<literal, record TypeSpec> with
+    val1 = iter rawParams.val1,
+    val2 = iter paramTypes
+  outputTypeDesc:
+    ref(literal) "the natural language description of the output type, as stated in: {rawText}"
+  outputType: satisfying interpret-type-spec where typeDesc = outputTypeDesc
+  operationDesc:
+    ref(literal) "the pure, domain-independent operation description extracted from: {rawText}. This description should state what the action does without referencing business logic."
+  luaScript:
+    ref(literal) "a Lua script that implements an action with name '{actionName}', parameters {typedParams}, output type {outputType}, and operation: '{operationDesc}'"
+must be:
+  record ActionDef with
+    name = subject,
+    annotation = annotation,
+    params = typedParams,
+    outputType = outputType,
+    luaScript = luaScript
+```
+
+---
+
+```text
+@"Describe a section in the ruleset, containing the full definitions or records/rules/actions, respectively."
 record RulesetSection with
   records: RecordDef[]
   rules: RuleDef[]
   actions: ActionDef[]
 
-action retrieveSimilarUnits on query(literal) returns record UnitSummary[]
-
+@"From a RulesetQuery which describes the desired ids, find the corresponding RulesetSection matching these query ids."
 action findSectionInRuleset on query(record RulesetQuery) returns record RulesetSection
 
 @"Interprets a natural‑language phrase that describes an expectation about desired units in the ruleset.
@@ -217,3 +232,4 @@ must be: result of findSectionInRuleset where query = rulesetQuery
 rule interpret-project-items for expectationPhrase(literal)
 must be:
   rulesetExp = ref(literal) "an expectation literal of existing ruleset items which fully describe the expectation for project items: {expectationPhrase}"
+```
