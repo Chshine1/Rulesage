@@ -44,36 +44,40 @@ open Rulesage.Common.Grammar.Parsers.Types
 module Rule =
     let private s = spaces
     let private s1 = spaces1
-    
+
     let private pParamExpr: Parser<ParamExpr, ParseContext> =
         pKey .>> s .>> skipChar '(' .>> s .>>. pTypeExpr .>> s .>> skipChar ')'
         |>> fun (k, t) -> { Key = k; Type = t }
 
-    let private pParamBlock (keyword: string): Parser<ParamExpr list, ParseContext> =
-        opt (skipString keyword >>. s1 >>. sepBy1 pParamExpr (s .>> skipChar ',' .>> s))
+    let private pParamBlock (keyword: string) : Parser<ParamExpr list, ParseContext> =
+        opt (
+            skipString keyword >>. s1 >>. sepBy1 pParamExpr (s .>> skipChar ',' .>> s)
+            .>> s1
+        )
         |>> fun ol ->
             match ol with
             | Some l -> l
             | None -> []
-    
+
     let private pGivenExpr: Parser<GivenExpr, ParseContext> =
-        pKey .>> s .>> skipChar ':' .>> s .>>. pValueExpr |>> fun (k, v) -> { Key = k; Value = v }
+        pKey .>> s .>> skipChar ':' .>> s .>>. pValueExpr
+        |>> fun (k, v) -> { Key = k; Value = v }
 
     let private pGivenBlock: Parser<GivenExpr list, ParseContext> =
-        opt (skipString "given" >>. s >>. skipChar ':' >>. s >>. sepBy1 pGivenExpr s1)
+        opt (skipString "given" >>. s >>. skipChar ':' >>. s >>. sepBy1 pGivenExpr s1 .>> s1)
         |>> fun ol ->
             match ol with
             | Some l -> l
             | None -> []
-    
+
     let private pMustBeExpr: Parser<ValueExpr, ParseContext> =
         skipString "must be" >>. s >>. skipChar ':' >>. s >>. pValueExpr
 
     let pRule: Parser<RuleExpr, ParseContext> =
         pAnnotation .>> s .>> skipString "rule" .>> s1
         .>>. (pId .>> s1)
-        .>>. (pParamBlock "for" .>> s1)
-        .>>. (pGivenBlock .>> s1)
+        .>>. pParamBlock "for"
+        .>>. pGivenBlock
         .>>. pMustBeExpr
         |>> fun ((((a, i), fs), gs), m) ->
             {
@@ -94,14 +98,14 @@ module Rule =
                 Annotation = a
                 Fors = fs |> Seq.map (fun f -> f.Key, f) |> Map.ofSeq
             }
-    
+
     let private pReturnsExpr: Parser<TypeExpr, ParseContext> =
         skipString "returns" >>. s >>. skipChar ':' >>. s >>. pTypeExpr
 
     let pAction: Parser<ActionExpr, ParseContext> =
         pAnnotation .>> s .>> skipString "action" .>> s1
         .>>. (pId .>> s1)
-        .>>. (pParamBlock "on" .>> s1)
+        .>>. pParamBlock "on"
         .>>. pReturnsExpr
         |>> fun (((a, i), fs), r) ->
             {

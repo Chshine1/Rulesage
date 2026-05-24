@@ -24,10 +24,13 @@ open Rulesage.Common.Grammar.Parsers.Vars
 module Primitives =
     let private s = spaces
     let private s1 = spaces1
-    
+
     let pRef: Parser<RefExpr, ParseContext> =
-        skipString "ref" >>. s >>. between (skipChar '(') (skipChar ')') (s >>. pTypeExpr .>> s)
-        .>> s1 .>>. pSingleLineString
+        skipString "ref"
+        >>. s
+        >>. between (skipChar '(') (skipChar ')') (s >>. pTypeExpr .>> s)
+        .>> s1
+        .>>. pSingleLineString
         |>> fun (t, s) -> { ExpctedType = t; Desc = s }
 
     let pPrimitiveExpr, private pPrimitiveExprRef =

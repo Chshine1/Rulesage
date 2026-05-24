@@ -15,7 +15,7 @@ open Rulesage.Common.Grammar.Parsers.Vars
 
 module Strings =
     let private s = spaces
-    
+
     let private pStringPart: Parser<StringPart, ParseContext> =
         let pEscaped =
             choice
@@ -35,8 +35,22 @@ module Strings =
         choice [ pEscaped; pInterpolation; pNormalChar ]
 
     let pSingleLineString: Parser<StringTemplate, ParseContext> =
-        sepBy1 (between (skipChar '\"') (skipChar '\"') (many pStringPart)) (skipChar '+') |>> Seq.concat
+        sepBy1 (between (skipChar '\"') (skipChar '\"') (many pStringPart)) (skipChar '+')
+        |>> Seq.concat
 
     let pAnnotation: Parser<string, ParseContext> =
-        let pSection = between (skipChar '\"') (skipChar '\"') (manyChars (choice [ noneOf "\"\\\n"; skipString "\\\\" >>% '\\'; skipString "\\\"" >>% '"'; skipString "\\n" >>% '\n' ]))
+        let pSection =
+            between
+                (skipChar '\"')
+                (skipChar '\"')
+                (manyChars (
+                    choice
+                        [
+                            noneOf "\"\\\n"
+                            skipString "\\\\" >>% '\\'
+                            skipString "\\\"" >>% '"'
+                            skipString "\\n" >>% '\n'
+                        ]
+                ))
+
         skipChar '@' >>. sepBy1 pSection (s >>. skipChar '+' >>. s) |>> String.concat ""

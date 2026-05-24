@@ -23,7 +23,7 @@ open Rulesage.Common.Grammar.Parsers.Primitives
 module Dynamic =
     let private s = spaces
     let private s1 = spaces1
-    
+
     let private pArgExpr: Parser<ArgExpr, ParseContext> =
         pKey .>> s .>> skipChar '=' .>> s .>>. pPrimitiveExpr
         |>> fun (k, v) -> { Key = k; Value = v }
@@ -40,6 +40,8 @@ module Dynamic =
             [
                 skipString "satisfying" >>. s1 >>. pId .>> s1 .>>. (pArgBlock "where")
                 |>> DynamicExpr.Satisfying
-                skipString "result of" >>. s1 >>. pId .>> s1 .>>. (pArgBlock "where") |>> DynamicExpr.ResultOf
-                skipString "record" >>. s1 >>. pRecordId .>> s1 .>>. (pArgBlock "with") |>> DynamicExpr.Record
+                skipString "result of" >>. s1 >>. pId .>> s1 .>>. (pArgBlock "where")
+                |>> DynamicExpr.ResultOf
+                skipString "record" >>. s1 >>. pRecordId .>> s1 .>>. (pArgBlock "with")
+                |>> DynamicExpr.Record
             ]

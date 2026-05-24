@@ -15,7 +15,7 @@ open Rulesage.Common.Grammar.Parsers.Lexer
 
 module Types =
     let private s1 = spaces1
-    
+
     let private pAtomicType: Parser<AtomicType, ParseContext> =
         choice
             [

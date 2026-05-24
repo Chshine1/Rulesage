@@ -28,9 +28,11 @@ open Rulesage.Common.Grammar.Parsers.Primitives
 module Seq =
     let private s = spaces
     let private s1 = spaces1
-    
+
     let private pIterArgExpr: Parser<IterArgExpr, ParseContext> =
-        pKey .>> s .>> skipChar '=' .>> s .>>. opt (skipString "iter" .>> s1) .>>. pPrimitiveExpr
+        pKey .>> s .>> skipChar '=' .>> s
+        .>>. opt (skipString "iter" .>> s1)
+        .>>. pPrimitiveExpr
         |>> fun ((k, o), v) -> { Key = k; Value = v; Iter = o.IsSome }
 
     let private pIterArgBlock (keyword: string) : Parser<IterArgBlock, ParseContext> =
@@ -41,11 +43,14 @@ module Seq =
             | None -> []
 
     let pSeqExpr: Parser<SeqExpr, ParseContext> =
-        skipString "seq" >>. s1
+        skipString "seq"
+        >>. s1
         >>. choice
                 [
                     skipString "satisfying" >>. s1 >>. pId .>> s1 .>>. (pIterArgBlock "where")
                     |>> SeqExpr.Satisfying
-                    skipString "result of" >>. s1 >>. pId .>> s1 .>>. (pIterArgBlock "where") |>> SeqExpr.ResultOf
-                    skipString "record" >>. s1 >>. pRecordId .>> s1 .>>. (pIterArgBlock "with") |>> SeqExpr.Record
+                    skipString "result of" >>. s1 >>. pId .>> s1 .>>. (pIterArgBlock "where")
+                    |>> SeqExpr.ResultOf
+                    skipString "record" >>. s1 >>. pRecordId .>> s1 .>>. (pIterArgBlock "with")
+                    |>> SeqExpr.Record
                 ]
