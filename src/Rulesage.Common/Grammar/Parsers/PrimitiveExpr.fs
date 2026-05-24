@@ -17,25 +17,31 @@ namespace Rulesage.Common.Grammar.Parsers
 open FParsec
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
+open Rulesage.Common.Grammar.Parsers.Strings
+open Rulesage.Common.Grammar.Parsers.Types
+open Rulesage.Common.Grammar.Parsers.Vars
 
 module Primitives =
+    let private s = spaces
+    let private s1 = spaces1
+    
     let pRef: Parser<RefExpr, ParseContext> =
-        skipString "ref" >>. between (skipChar '(') (skipChar ')') Types.pTypeExpr
-        .>>. Strings.pSingleLineString
+        skipString "ref" >>. s >>. between (skipChar '(') (skipChar ')') (s >>. pTypeExpr .>> s)
+        .>> s1 .>>. pSingleLineString
         |>> fun (t, s) -> { ExpctedType = t; Desc = s }
 
     let pPrimitiveExpr, private pPrimitiveExprRef =
         createParserForwardedToRef<PrimitiveExpr, ParseContext> ()
 
     let private pArrayExpr: Parser<PrimitiveExpr, ParseContext> =
-        between (skipChar '[') (skipChar ']') (sepBy pPrimitiveExpr (skipChar ','))
+        between (skipChar '[') (skipChar ']') (s >>. sepBy pPrimitiveExpr (s >>. skipChar ',' >>. s) .>> s)
         |>> PrimitiveExpr.Array
 
     pPrimitiveExprRef.Value <-
         choice
             [
-                Strings.pSingleLineString |>> PrimitiveExpr.StringLiteral
+                pSingleLineString |>> PrimitiveExpr.StringLiteral
                 pRef |>> PrimitiveExpr.Ref
-                Vars.pVarExpr |>> PrimitiveExpr.Var
+                pVarExpr |>> PrimitiveExpr.Var
                 pArrayExpr
             ]

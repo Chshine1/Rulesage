@@ -16,13 +16,14 @@ namespace Rulesage.Common.Grammar.Parsers
 open FParsec
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
+open Rulesage.Common.Grammar.Parsers.Lexer
 
 module Vars =
     let private pVarSource: Parser<VarSource, ParseContext> =
         choice [ skipString "$for" >>% VarSource.For; skipString "$given" >>% VarSource.Given ]
 
     let private pVarSegment (source: VarSource) : Parser<string, ParseContext> =
-        skipChar '.' >>. Lexer.pKey
+        skipChar '.' >>. pKey
         >>= fun key ->
             fun stream ->
                 let keys =
@@ -37,5 +38,5 @@ module Vars =
     let pVarExpr: Parser<VarExpr, ParseContext> =
         pVarSource
         >>= fun source ->
-            pVarSegment source .>>. many (skipChar '.' >>. Lexer.pKey)
+            pVarSegment source .>>. many (skipChar '.' >>. pKey)
             |>> fun (k, f) -> { Source = source; Key = k; Fields = f }

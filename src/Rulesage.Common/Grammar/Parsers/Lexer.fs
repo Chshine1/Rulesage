@@ -7,7 +7,7 @@ module Lexer =
     let pId: Parser<string, ParseContext> = regex "[a-zA-Z-][a-zA-Z0-9-]*"
     let pKey: Parser<string, ParseContext> = regex "[a-zA-Z][a-zA-Z0-9]*"
 
-    let pNodeId: Parser<NodeSignature, ParseContext> =
+    let pRecordId: Parser<NodeSignature, ParseContext> =
         fun stream ->
             let reply = pId stream
 
@@ -18,5 +18,5 @@ module Lexer =
 
                 match ctx.nodes.TryFind id with
                 | Some signature -> Reply(signature)
-                | None -> Reply(Error, expected <| $"predefined node (e.g. %s{id})")
+                | None -> Reply(Error, expected <| $"predefined record (e.g. %s{id})")
             | _ -> Reply(reply.Status, reply.Error)

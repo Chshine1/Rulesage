@@ -37,7 +37,7 @@ type DynamicExprInterpreter
         member _.InterpretAsync ctx expr =
             task {
                 match expr with
-                | DynamicExpr.Node(nodeSignature, args) ->
+                | DynamicExpr.Record(nodeSignature, args) ->
                     let! withValues = synthesizeArgsAsync ctx args
                     let! node = nodeService.BuildAsync ctx.CtSource.Token nodeSignature.id withValues
                     return node |> SynthesizedValue.Node

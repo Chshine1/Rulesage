@@ -79,7 +79,7 @@ type SeqExprInterpreter
             let ct = ctx.CtSource.Token
 
             match expr with
-            | SeqExpr.Node(nodeSig, args) ->
+            | SeqExpr.Record(nodeSig, args) ->
                 processSeq
                     ctx
                     args

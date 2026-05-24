@@ -11,13 +11,16 @@ namespace Rulesage.Common.Grammar.Parsers
 open FParsec
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
+open Rulesage.Common.Grammar.Parsers.Lexer
 
 module Types =
+    let private s1 = spaces1
+    
     let private pAtomicType: Parser<AtomicType, ParseContext> =
         choice
             [
                 skipString "literal" >>% AtomicType.Literal
-                skipString "node" >>. Lexer.pNodeId |>> fun n -> AtomicType.Node n.id
+                skipString "record" >>. s1 >>. pRecordId |>> fun n -> AtomicType.Node n.id
             ]
 
     let pTypeExpr: Parser<TypeExpr, ParseContext> =

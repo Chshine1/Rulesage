@@ -11,8 +11,11 @@ namespace Rulesage.Common.Grammar.Parsers
 open FParsec
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
+open Rulesage.Common.Grammar.Parsers.Vars
 
 module Strings =
+    let private s = spaces
+    
     let private pStringPart: Parser<StringPart, ParseContext> =
         let pEscaped =
             choice
@@ -24,7 +27,7 @@ module Strings =
                 ]
 
         let pInterpolation =
-            between (skipChar '{') (skipChar '}') Vars.pVarExpr
+            between (skipChar '{') (skipChar '}') (s >>. pVarExpr .>> s)
             |>> StringPart.Interpolation
 
         let pNormalChar = noneOf "\"\\\n{" |>> fun c -> StringPart.Literal(string c)
@@ -36,4 +39,4 @@ module Strings =
 
     let pAnnotation: Parser<string, ParseContext> =
         let pSection = between (skipChar '\"') (skipChar '\"') (manyChars (choice [ noneOf "\"\\\n"; skipString "\\\\" >>% '\\'; skipString "\\\"" >>% '"'; skipString "\\n" >>% '\n' ]))
-        skipChar '@' >>. sepBy1 pSection (skipChar '+') |>> String.concat ""
+        skipChar '@' >>. sepBy1 pSection (s >>. skipChar '+' >>. s) |>> String.concat ""
