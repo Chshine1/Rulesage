@@ -6,6 +6,6 @@ public interface INodeRepository: IDocumentRepository
 {
     Task<IEnumerable<RecordExpr>> FindByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default);
     
-    Task<IEnumerable<(RecordExpr, float)>> FindOrderByCosineDistanceAsync(double[] queryVector, int skip, int take,
+    Task<IEnumerable<(RecordExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector, int skip, int take,
         CancellationToken cancellationToken = default);
 }

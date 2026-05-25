@@ -10,13 +10,13 @@ internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath) : IEm
     private readonly InferenceSession _inferenceSession = new(modelPath);
     private const int EmbeddingDimension = 384;
 
-    public double[] GetEmbedding(string text, int chunkSize = IEmbeddingService.MaxSequenceLength,
+    public float[] GetEmbedding(string text, int chunkSize = IEmbeddingService.MaxSequenceLength,
         int overlapSize = IEmbeddingService.OverlapSize)
     {
         return GetBatchEmbeddings([text], chunkSize, overlapSize)[0];
     }
 
-    public double[][] GetBatchEmbeddings(
+    public float[][] GetBatchEmbeddings(
         IEnumerable<string> texts,
         int chunkSize = IEmbeddingService.MaxSequenceLength,
         int overlapSize = IEmbeddingService.OverlapSize)
@@ -55,12 +55,12 @@ internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath) : IEm
 
         var allEmbeddings = GetBatchEmbeddings(allChunks);
 
-        var sumVectors = new double[textList.Count][];
+        var sumVectors = new float[textList.Count][];
         var chunkCounts = new int[textList.Count];
 
         for (var i = 0; i < textList.Count; i++)
         {
-            sumVectors[i] = new double[EmbeddingDimension];
+            sumVectors[i] = new float[EmbeddingDimension];
         }
 
         for (var i = 0; i < allEmbeddings.Length; i++)
@@ -76,11 +76,11 @@ internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath) : IEm
             chunkCounts[textIdx]++;
         }
 
-        var results = new double[textList.Count][];
+        var results = new float[textList.Count][];
         for (var i = 0; i < textList.Count; i++)
         {
-            double count = chunkCounts[i];
-            var avg = new double[EmbeddingDimension];
+            float count = chunkCounts[i];
+            var avg = new float[EmbeddingDimension];
             for (var j = 0; j < EmbeddingDimension; j++)
             {
                 avg[j] = sumVectors[i][j] / count;
@@ -93,7 +93,7 @@ internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath) : IEm
         return results;
     }
 
-    private double[][] GetBatchEmbeddings(List<long[]> tokenizedTexts)
+    private float[][] GetBatchEmbeddings(List<long[]> tokenizedTexts)
     {
         var batchSize = tokenizedTexts.Count;
         if (batchSize == 0) return [];
@@ -127,9 +127,13 @@ internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath) : IEm
         };
 
         using var results = _inferenceSession.Run(inputs);
-        var tokenEmbeddings = results[0].AsTensor<double>();
+        if (results == null || results.Count == 0)
+            throw new InvalidOperationException("The ONNX model returned no results.");
 
-        var sentenceEmbeddings = new double[batchSize][];
+        var tokenEmbeddings = results[0].AsTensor<float>() ??
+                              throw new InvalidOperationException("The token embeddings tensor is null.");
+
+        var sentenceEmbeddings = new float[batchSize][];
         for (var i = 0; i < batchSize; i++)
         {
             var embeddings = MeanPoolingForSample(i, tokenEmbeddings, attentionMasks);
@@ -140,9 +144,9 @@ internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath) : IEm
         return sentenceEmbeddings;
     }
 
-    private static double[] MeanPoolingForSample(int batchIndex, Tensor<double> tokenEmbeddings, long[,] attentionMasks)
+    private static float[] MeanPoolingForSample(int batchIndex, Tensor<float> tokenEmbeddings, long[,] attentionMasks)
     {
-        var sum = new double[EmbeddingDimension];
+        var sum = new float[EmbeddingDimension];
         var count = 0;
 
         for (var i = 0; i < IEmbeddingService.MaxSequenceLength; i++)
@@ -164,10 +168,10 @@ internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath) : IEm
         return sum;
     }
 
-    private static void NormalizeL2(double[] vector)
+    private static void NormalizeL2(float[] vector)
     {
         var sumOfSquares = vector.Sum(t => t * t);
-        var norm = Math.Sqrt(sumOfSquares);
+        var norm = MathF.Sqrt(sumOfSquares);
 
         for (var i = 0; i < vector.Length; i++)
         {

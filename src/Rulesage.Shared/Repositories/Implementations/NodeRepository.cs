@@ -41,7 +41,7 @@ public class NodeRepository(NpgsqlDataSource dataSource): INodeRepository
         throw new NotImplementedException();
     }
 
-    public async Task<IEnumerable<(RecordExpr, float)>> FindOrderByCosineDistanceAsync(double[] queryVector, int skip, int take,
+    public async Task<IEnumerable<(RecordExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector, int skip, int take,
         CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();

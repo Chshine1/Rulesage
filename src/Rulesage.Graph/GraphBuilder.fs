@@ -162,10 +162,11 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                         let desc1 = nodesMap[nodeIds[i]].Description
                         let desc2 = nodesMap[nodeIds[j]].Description
                         let! sim = simService.ComputeSimilarityAsync desc1 desc2
-                        simMatrix[i, j] <- sim
-                        simMatrix[j, i] <- sim
-                        distanceMatrix[i, j] <- 1.0 - sim
-                        distanceMatrix[j, i] <- 1.0 - sim
+                        let dsim = sim |> Convert.ToDouble
+                        simMatrix[i, j] <- dsim
+                        simMatrix[j, i] <- dsim
+                        distanceMatrix[i, j] <- 1.0 - dsim
+                        distanceMatrix[j, i] <- 1.0 - dsim
 
                 let localScales =
                     Array.init
