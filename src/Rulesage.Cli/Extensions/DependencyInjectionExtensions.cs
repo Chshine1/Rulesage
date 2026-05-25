@@ -11,6 +11,7 @@ public static class ServiceCollectionExtensions
     {
         public IServiceCollection AddHandlers()
         {
+            collection.AddScoped<NetworkHandler>();
             collection.AddScoped<RulesHandler>();
             collection.AddScoped<NodesHandler>();
             

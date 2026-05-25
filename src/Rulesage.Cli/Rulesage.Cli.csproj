@@ -16,6 +16,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Rulesage.Common\Rulesage.Common.fsproj"/>
+        <ProjectReference Include="..\Rulesage.Graph\Rulesage.Graph.fsproj"/>
         <ProjectReference Include="..\Rulesage.Shared\Rulesage.Shared.csproj"/>
     </ItemGroup>
 
