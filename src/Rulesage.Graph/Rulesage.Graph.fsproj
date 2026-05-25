@@ -6,11 +6,14 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Services\Abstractions\ISimilarityService.fs" />
+        <Compile Include="Services\Implementations\SimilarityService.fs" />
         <Compile Include="GraphBuilder.fs" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Rulesage.Common\Rulesage.Common.fsproj" />
+      <ProjectReference Include="..\Rulesage.Shared\Rulesage.Shared.csproj" />
     </ItemGroup>
 
     <ItemGroup>

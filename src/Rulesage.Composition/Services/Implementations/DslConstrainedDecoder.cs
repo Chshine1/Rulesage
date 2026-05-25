@@ -82,6 +82,7 @@ public class DslConstrainedDecoder(ILlmService llm): IDslConstrainedDecoder
         };
 
         var result = await llm.CompleteAsync(messages, cancellationToken);
-        return result.Content;
+        var dsl = result.Content;
+        throw new NotImplementedException();
     }
 }

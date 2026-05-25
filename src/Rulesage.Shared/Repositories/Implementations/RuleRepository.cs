@@ -48,7 +48,7 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         return new RuleExpr(annotation, id, fors, givens, mustBe);
     }
 
-    public async Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector,
+    public async Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(double[] queryVector,
         int skip, int take,
         CancellationToken cancellationToken = default)
     {

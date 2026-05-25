@@ -5,60 +5,109 @@ using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.Shared.Services.Implementations;
 
-internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath): IEmbeddingService, IDisposable
+internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath) : IEmbeddingService, IDisposable
 {
     private readonly InferenceSession _inferenceSession = new(modelPath);
-    private const int MaxSequenceLength = 256;
     private const int EmbeddingDimension = 384;
 
-    public float[] GetEmbedding(string text, int chunkSize = MaxSequenceLength, int overlapSize = 50)
+    public double[] GetEmbedding(string text, int chunkSize = IEmbeddingService.MaxSequenceLength,
+        int overlapSize = IEmbeddingService.OverlapSize)
     {
-        if (overlapSize >= chunkSize) throw new ArgumentException("Overlap size should be smaller than chunk size");
-        if (chunkSize > MaxSequenceLength) throw new ArgumentException("Chunk size should be smaller than max sequence length");
-        
-        var tokenized = tokenizer.EncodeToIds(text).Select(x => (long)x).ToArray();
-        if (tokenized.Length == 0) throw new ArgumentException("Tokenized text is empty");
-        
-        var batch = new List<long[]>();
-        
+        return GetBatchEmbeddings([text], chunkSize, overlapSize)[0];
+    }
+
+    public double[][] GetBatchEmbeddings(
+        IEnumerable<string> texts,
+        int chunkSize = IEmbeddingService.MaxSequenceLength,
+        int overlapSize = IEmbeddingService.OverlapSize)
+    {
+        if (overlapSize >= chunkSize)
+            throw new ArgumentException("Overlap size should be smaller than chunk size");
+        if (chunkSize > IEmbeddingService.MaxSequenceLength)
+            throw new ArgumentException("Chunk size should be smaller than max sequence length");
+
+        var textList = texts as IList<string> ?? texts.ToList();
+        if (textList.Count == 0) return [];
+
+        var allChunks = new List<long[]>();
+        var chunkTextIndex = new List<int>();
+
         var step = chunkSize - overlapSize;
-        for (var start = 0; start < tokenized.Length; start += step)
+
+        for (var textIdx = 0; textIdx < textList.Count; textIdx++)
         {
-            var length = Math.Min(chunkSize, tokenized.Length - start);
-            var chunk = new long[length];
-            Array.Copy(tokenized, start, chunk, 0, length);
-            batch.Add(chunk);
-        }
-        
-        var embeddings = GetBatchEmbeddings(batch);
-        
-        var result = new float[EmbeddingDimension];
-        foreach (var embedding in embeddings)
-        {
-            for (var i = 0; i < EmbeddingDimension; i++)
+            var tokenized = tokenizer.EncodeToIds(textList[textIdx])
+                .Select(x => (long)x)
+                .ToArray();
+
+            if (tokenized.Length == 0)
+                throw new ArgumentException($"Tokenized text is empty for text at index {textIdx}.");
+
+            for (var start = 0; start < tokenized.Length; start += step)
             {
-                result[i] += embedding[i];
+                var length = Math.Min(chunkSize, tokenized.Length - start);
+                var chunk = new long[length];
+                Array.Copy(tokenized, start, chunk, 0, length);
+                allChunks.Add(chunk);
+                chunkTextIndex.Add(textIdx);
             }
         }
-        
-        NormalizeL2(result);
-        return result;
+
+        var allEmbeddings = GetBatchEmbeddings(allChunks);
+
+        var sumVectors = new double[textList.Count][];
+        var chunkCounts = new int[textList.Count];
+
+        for (var i = 0; i < textList.Count; i++)
+        {
+            sumVectors[i] = new double[EmbeddingDimension];
+        }
+
+        for (var i = 0; i < allEmbeddings.Length; i++)
+        {
+            var textIdx = chunkTextIndex[i];
+            var emb = allEmbeddings[i];
+            var sum = sumVectors[textIdx];
+            for (var j = 0; j < EmbeddingDimension; j++)
+            {
+                sum[j] += emb[j];
+            }
+
+            chunkCounts[textIdx]++;
+        }
+
+        var results = new double[textList.Count][];
+        for (var i = 0; i < textList.Count; i++)
+        {
+            double count = chunkCounts[i];
+            var avg = new double[EmbeddingDimension];
+            for (var j = 0; j < EmbeddingDimension; j++)
+            {
+                avg[j] = sumVectors[i][j] / count;
+            }
+
+            NormalizeL2(avg);
+            results[i] = avg;
+        }
+
+        return results;
     }
-    
-    public float[][] GetBatchEmbeddings(IReadOnlyList<long[]> tokenizedTexts)
+
+    private double[][] GetBatchEmbeddings(List<long[]> tokenizedTexts)
     {
         var batchSize = tokenizedTexts.Count;
         if (batchSize == 0) return [];
-        
-        var tokenIds = new long[batchSize, MaxSequenceLength];
-        var attentionMasks = new long[batchSize, MaxSequenceLength];
-        var tokenTypeIds = new long[batchSize, MaxSequenceLength];
+
+        var tokenIds = new long[batchSize, IEmbeddingService.MaxSequenceLength];
+        var attentionMasks = new long[batchSize, IEmbeddingService.MaxSequenceLength];
+        var tokenTypeIds = new long[batchSize, IEmbeddingService.MaxSequenceLength];
 
         for (var i = 0; i < batchSize; i++)
         {
             var t = tokenizedTexts[i];
-            if (t.Length > MaxSequenceLength) throw new ArgumentException("Each tokenized text size should be smaller than max sequence length");
-            
+            if (t.Length > IEmbeddingService.MaxSequenceLength)
+                throw new ArgumentException("Each tokenized text size should be smaller than max sequence length");
+
             for (var j = 0; j < t.Length; j++)
             {
                 tokenIds[i, j] = t[j];
@@ -78,30 +127,32 @@ internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath): IEmb
         };
 
         using var results = _inferenceSession.Run(inputs);
-        var tokenEmbeddings = results[0].AsTensor<float>();
+        var tokenEmbeddings = results[0].AsTensor<double>();
 
-        var sentenceEmbeddings = new float[batchSize][];
+        var sentenceEmbeddings = new double[batchSize][];
         for (var i = 0; i < batchSize; i++)
         {
             var embeddings = MeanPoolingForSample(i, tokenEmbeddings, attentionMasks);
             NormalizeL2(embeddings);
             sentenceEmbeddings[i] = embeddings;
         }
+
         return sentenceEmbeddings;
     }
 
-    private static float[] MeanPoolingForSample(int batchIndex, Tensor<float> tokenEmbeddings, long[,] attentionMasks)
+    private static double[] MeanPoolingForSample(int batchIndex, Tensor<double> tokenEmbeddings, long[,] attentionMasks)
     {
-        var sum = new float[EmbeddingDimension];
+        var sum = new double[EmbeddingDimension];
         var count = 0;
 
-        for (var i = 0; i < MaxSequenceLength; i++)
+        for (var i = 0; i < IEmbeddingService.MaxSequenceLength; i++)
         {
             if (attentionMasks[batchIndex, i] != 1) continue;
             for (var j = 0; j < EmbeddingDimension; j++)
             {
                 sum[j] += tokenEmbeddings[batchIndex, i, j];
             }
+
             count++;
         }
 
@@ -109,13 +160,14 @@ internal class OnnxEmbeddingService(Tokenizer tokenizer, string modelPath): IEmb
         {
             sum[i] /= count;
         }
+
         return sum;
     }
-    
-    private static void NormalizeL2(float[] vector)
+
+    private static void NormalizeL2(double[] vector)
     {
         var sumOfSquares = vector.Sum(t => t * t);
-        var norm = (float)Math.Sqrt(sumOfSquares);
+        var norm = Math.Sqrt(sumOfSquares);
 
         for (var i = 0; i < vector.Length; i++)
         {
