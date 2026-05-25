@@ -16,13 +16,13 @@ open Rulesage.Common.Grammar.Parsers.Lexer
 module Types =
     let private s1 = spaces1
 
-    let private pAtomicType: Parser<AtomicType, ParseContext> =
+    let private pAtomicType: Parser<AtomicType> =
         choice
             [
                 skipString "literal" >>% AtomicType.Literal
-                skipString "record" >>. s1 >>. pRecordId |>> fun n -> AtomicType.Record n.id
+                skipString "record" >>. s1 >>. pId |>> AtomicType.Record
             ]
 
-    let pTypeExpr: Parser<TypeExpr, ParseContext> =
+    let pTypeExpr: Parser<TypeExpr> =
         pAtomicType .>>. many (skipString "[]")
         |>> fun (a, l) -> { Atomic = a; Dimension = l.Length }

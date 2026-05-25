@@ -1,5 +1,7 @@
 ﻿namespace Rulesage.Common.Grammar
 
+open FParsec
+
 type Identifier = string
 
 type Type =
@@ -34,3 +36,5 @@ type ParseContext =
         forItemsKeys: string list
         givenItemsKeys: string list
     }
+
+type Parser<'a> = Parser<'a, unit>

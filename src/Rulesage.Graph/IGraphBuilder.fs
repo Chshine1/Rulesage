@@ -1,7 +1,7 @@
 ﻿namespace Rulesage.Graph
 
-open System
 open System.Threading.Tasks
+open QuikGraph
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
 
@@ -13,56 +13,15 @@ type NodeId =
 
 type GraphNode = { Id: NodeId; Description: string }
 
-[<CustomEquality; CustomComparison>]
-type StructuralEdge =
-    {
-        SourceId: NodeId
-        TargetId: NodeId
-    }
+type StructuralEdge = Edge<NodeId>
 
-    interface IComparable with
-        member this.CompareTo obj =
-            match obj with
-            | :? StructuralEdge as e ->
-                let c1 = compare this.SourceId e.SourceId
-                if c1 <> 0 then c1 else compare this.TargetId e.TargetId
-            | _ -> invalidArg "obj" "Cannot compare values of different types"
-
-    override this.Equals obj =
-        match obj with
-        | :? StructuralEdge as e -> this.SourceId = e.SourceId && this.TargetId = e.TargetId
-        | _ -> false
-
-    override this.GetHashCode() = hash (this.SourceId, this.TargetId)
-
-[<CustomEquality; CustomComparison>]
-type SemanticEdge =
-    {
-        SourceId: NodeId
-        TargetId: NodeId
-        Weight: float
-    }
-
-    interface IComparable with
-        member this.CompareTo obj =
-            match obj with
-            | :? SemanticEdge as e ->
-                let c1 = compare this.SourceId e.SourceId
-                if c1 <> 0 then c1 else compare this.TargetId e.TargetId
-            | _ -> invalidArg "obj" "Cannot compare values of different types"
-
-    override this.Equals obj =
-        match obj with
-        | :? SemanticEdge as e -> this.SourceId = e.SourceId && this.TargetId = e.TargetId
-        | _ -> false
-
-    override this.GetHashCode() = hash (this.SourceId, this.TargetId)
+type SemanticEdge = TaggedUndirectedEdge<NodeId, float>
 
 type RulesageGraph =
     {
         Nodes: Map<NodeId, GraphNode>
-        StructuralLayer: Map<NodeId, StructuralEdge Set>
-        SemanticLayer: Map<NodeId, SemanticEdge Set>
+        StructuralLayer: BidirectionalGraph<NodeId, Edge<NodeId>>
+        SemanticLayer: UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>>
     }
 
 type IGraphBuilder =

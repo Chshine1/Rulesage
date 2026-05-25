@@ -16,7 +16,7 @@ open Rulesage.Common.Grammar.Parsers.Domain.Seq
 open Rulesage.Common.Grammar.Parsers.Primitives
 
 module Value =
-    let pValueExpr: Parser<ValueExpr, ParseContext> =
+    let pValueExpr: Parser<ValueExpr> =
         choice
             [
                 pPrimitiveExpr |>> ValueExpr.Primitive

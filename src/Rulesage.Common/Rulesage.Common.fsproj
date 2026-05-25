@@ -17,6 +17,7 @@
         <Compile Include="Grammar\Parsers\Domain\ValueExpr.fs" />
         <Compile Include="Grammar\Parsers\Domain\RuleExpr.fs" />
         <Compile Include="Utils\TaskUtils.fs" />
+        <Compile Include="DocumentParser.fs" />
         <EmbeddedResource Include="Migrations\*.sql" />
     </ItemGroup>
 

@@ -19,24 +19,13 @@ open Rulesage.Common.Grammar.Ast
 open Rulesage.Common.Grammar.Parsers.Lexer
 
 module Vars =
-    let private pVarSource: Parser<VarSource, ParseContext> =
+    let private pVarSource: Parser<VarSource> =
         choice [ skipString "$for" >>% VarSource.For; skipString "$given" >>% VarSource.Given ]
 
-    let private pVarSegment (source: VarSource) : Parser<string, ParseContext> =
-        skipChar '.' >>. pKey
-        >>= fun key ->
-            fun stream ->
-                let keys =
-                    match source with
-                    | For -> stream.UserState.forItemsKeys
-                    | Given -> stream.UserState.givenItemsKeys
+    let private pVarSegment: Parser<string> = skipChar '.' >>. pKey
 
-                match keys |> Seq.contains key with
-                | true -> Reply(key)
-                | false -> Reply(Error, expected $"%A{source} variable '%s{key}'")
-
-    let pVarExpr: Parser<VarExpr, ParseContext> =
+    let pVarExpr: Parser<VarExpr> =
         pVarSource
         >>= fun source ->
-            pVarSegment source .>>. many (skipChar '.' >>. pKey)
+            pVarSegment .>>. many (skipChar '.' >>. pKey)
             |>> fun (k, f) -> { Source = source; Key = k; Fields = f }

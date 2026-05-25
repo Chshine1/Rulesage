@@ -25,7 +25,7 @@ module Primitives =
     let private s = spaces
     let private s1 = spaces1
 
-    let pRef: Parser<RefExpr, ParseContext> =
+    let pRef: Parser<RefExpr> =
         skipString "ref"
         >>. s
         >>. between (skipChar '(') (skipChar ')') (s >>. pTypeExpr .>> s)
@@ -34,9 +34,9 @@ module Primitives =
         |>> fun (t, s) -> { ExpctedType = t; Desc = s }
 
     let pPrimitiveExpr, private pPrimitiveExprRef =
-        createParserForwardedToRef<PrimitiveExpr, ParseContext> ()
+        createParserForwardedToRef<PrimitiveExpr, unit> ()
 
-    let private pArrayExpr: Parser<PrimitiveExpr, ParseContext> =
+    let private pArrayExpr: Parser<PrimitiveExpr> =
         between (skipChar '[') (skipChar ']') (s >>. sepBy pPrimitiveExpr (s >>. skipChar ',' >>. s) .>> s)
         |>> PrimitiveExpr.Array
 

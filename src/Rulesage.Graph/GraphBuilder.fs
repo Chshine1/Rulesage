@@ -4,6 +4,7 @@ open System
 open System.Collections.Generic
 open System.Threading.Tasks
 open Microsoft.Extensions.Options
+open QuikGraph
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
 open Rulesage.Graph.Services.Abstractions
@@ -93,32 +94,39 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
             (actions: ActionExpr seq)
             : Task<RulesageGraph> =
             task {
-                let mutable nodesMap = Map.empty<NodeId, GraphNode>
-                let mutable structEdgesList: StructuralEdge seq = []
+                let structuralGraph = BidirectionalGraph<NodeId, StructuralEdge>()
+                let semanticGraph   = UndirectedGraph<NodeId, SemanticEdge>()
 
-                let addNode (id: NodeId) (desc: string) : unit =
-                    nodesMap <- Map.add id { Id = id; Description = desc } nodesMap
+                let mutable nodesMap = Map.empty<NodeId, GraphNode>
+
+                let addedVertices = HashSet<NodeId>()
+
+                let ensureVertex (id: NodeId) =
+                    if addedVertices.Add(id) then
+                        structuralGraph.AddVertex(id) |> ignore
+                        semanticGraph.AddVertex(id)   |> ignore
+
+                let addNode (id: NodeId) (desc: string) =
+                    if not (nodesMap.ContainsKey id) then
+                        nodesMap <- Map.add id { Id = id; Description = desc } nodesMap
+                        ensureVertex id
 
                 let addStructEdges (targetId: NodeId) (sources: DependencyItem seq) =
-                    structEdgesList <-
-                        sources
-                        |> Seq.map (fun d ->
-                            let source =
-                                match d with
-                                | DependencyItem.Record id -> NodeId.Record id
-                                | DependencyItem.Rule id -> NodeId.Rule id
-                                | DependencyItem.Action id -> NodeId.Action id
-                                | DependencyItem.Ref expr ->
-                                    let id = NodeId.Ref $"ref_{Guid.NewGuid().ToString()}"
-                                    addNode id (expr.ToString())
-                                    id
+                    for dep in sources do
+                        let sourceId =
+                            match dep with
+                            | DependencyItem.Record id -> NodeId.Record id
+                            | DependencyItem.Rule id   -> NodeId.Rule id
+                            | DependencyItem.Action id -> NodeId.Action id
+                            | DependencyItem.Ref expr ->
+                                let refId = NodeId.Ref $"ref_{Guid.NewGuid()}"
+                                addNode refId (expr.ToString())
+                                refId
 
-                            {
-                                SourceId = source
-                                TargetId = targetId
-                            }
-                        )
-                        |> Seq.append structEdgesList
+                        ensureVertex sourceId
+                        ensureVertex targetId
+
+                        structuralGraph.AddEdge(Edge(sourceId, targetId)) |> ignore
 
                 for r in records do
                     let id = NodeId.Record r.Id
@@ -131,30 +139,21 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                     addNode id a.Annotation
                     let paramDeps = a.Fors.Values |> Seq.collect getDepsToParam
                     let retDeps = getRecordDepsToType a.Returns
-                    addStructEdges id (retDeps |> Seq.append paramDeps)
+                    addStructEdges id (Seq.append retDeps paramDeps)
 
                 for r in rules do
                     let id = NodeId.Rule r.Id
                     addNode id r.Annotation
-
-                    let typeDeps = r.Fors.Values |> Seq.collect getDepsToParam
-                    let givenDeps = r.Givens.Values |> Seq.collect getDepsToGiven
+                    let typeDeps   = r.Fors.Values |> Seq.collect getDepsToParam
+                    let givenDeps  = r.Givens.Values |> Seq.collect getDepsToGiven
                     let mustBeDeps = r.MustBe |> getDepsToValue
-
-                    let allDeps = mustBeDeps |> Seq.append givenDeps |> Seq.append typeDeps
-
+                    let allDeps = Seq.append mustBeDeps (Seq.append givenDeps typeDeps)
                     addStructEdges id allDeps
-
-                let structLayer =
-                    structEdgesList
-                    |> Seq.filter (fun e -> Map.containsKey e.SourceId nodesMap)
-                    |> Seq.groupBy _.SourceId
-                    |> Map.ofSeq
-                    |> Map.map (fun _ -> Set.ofSeq)
 
                 let nodeIds = nodesMap |> Map.keys |> Seq.toArray
                 let n = nodeIds.Length
-                let simMatrix = Array2D.create n n 0.0
+
+                let simMatrix      = Array2D.create n n 0.0
                 let distanceMatrix = Array2D.create n n 0.0
 
                 for i in 0 .. n - 1 do
@@ -168,45 +167,29 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                         distanceMatrix[j, i] <- 1.0 - sim
 
                 let localScales =
-                    Array.init
-                        n
-                        (fun i ->
-                            let sims = Array.init n (fun j -> simMatrix[i, j])
+                    Array.init n (fun i ->
+                        let sims = Array.init n (fun j -> simMatrix[i, j])
+                        sims
+                        |> Array.sortDescending
+                        |> Array.tryItem (_config.R - 1)
+                        |> Option.defaultValue 0.0
+                    )
 
-                            (_config.R - 1) |> (sims |> Array.sortBy id |> Array.get)
-                        )
-
-                let semanticEdges = List<SemanticEdge>()
-                
                 for i in 0 .. n - 1 do
                     for j in i + 1 .. n - 1 do
-                        let sim = Math.Exp (- distanceMatrix[i, j] * distanceMatrix[i, j] / (localScales[i] * localScales[j]))
-                        if sim > _config.SimThreshold then
-                            semanticEdges.Add(
-                                {
-                                    SourceId = nodeIds[i]
-                                    TargetId = nodeIds[j]
-                                    Weight = sim
-                                }
+                        let scaledSim =
+                            Math.Exp(
+                                - distanceMatrix[i, j] * distanceMatrix[i, j]
+                                / (localScales[i] * localScales[j])
                             )
-                            semanticEdges.Add(
-                                {
-                                    SourceId = nodeIds[j]
-                                    TargetId = nodeIds[i]
-                                    Weight = sim
-                                }
-                            )
+                        if scaledSim > _config.SimThreshold then
+                            let semEdge =
+                                TaggedUndirectedEdge(nodeIds[i], nodeIds[j], scaledSim)
+                            semanticGraph.AddEdge(semEdge) |> ignore
 
-                let semLayer =
-                    semanticEdges
-                    |> Seq.groupBy _.SourceId
-                    |> Map.ofSeq
-                    |> Map.map (fun _ -> Set.ofSeq)
-
-                return
-                    {
-                        Nodes = nodesMap
-                        StructuralLayer = structLayer
-                        SemanticLayer = semLayer
-                    }
+                return {
+                    Nodes = nodesMap
+                    StructuralLayer = structuralGraph
+                    SemanticLayer = semanticGraph
+                }
             }

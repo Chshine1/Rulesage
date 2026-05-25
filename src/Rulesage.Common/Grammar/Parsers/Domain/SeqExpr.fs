@@ -29,20 +29,20 @@ module Seq =
     let private s = spaces
     let private s1 = spaces1
 
-    let private pIterArgExpr: Parser<IterArgExpr, ParseContext> =
+    let private pIterArgExpr: Parser<IterArgExpr> =
         pKey .>> s .>> skipChar '=' .>> s
         .>>. opt (skipString "iter" .>> s1)
         .>>. pPrimitiveExpr
         |>> fun ((k, o), v) -> { Key = k; Value = v; Iter = o.IsSome }
 
-    let private pIterArgBlock (keyword: string) : Parser<IterArgBlock, ParseContext> =
+    let private pIterArgBlock (keyword: string) : Parser<IterArgBlock> =
         opt (skipString keyword >>. s1 >>. sepBy1 pIterArgExpr (s .>> skipChar ',' .>> s))
         |>> fun ol ->
             match ol with
             | Some l -> l
             | None -> []
 
-    let pSeqExpr: Parser<SeqExpr, ParseContext> =
+    let pSeqExpr: Parser<SeqExpr> =
         skipString "seq"
         >>. s1
         >>. choice

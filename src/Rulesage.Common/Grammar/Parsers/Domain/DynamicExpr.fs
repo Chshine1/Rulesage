@@ -24,18 +24,18 @@ module Dynamic =
     let private s = spaces
     let private s1 = spaces1
 
-    let private pArgExpr: Parser<ArgExpr, ParseContext> =
+    let private pArgExpr: Parser<ArgExpr> =
         pKey .>> s .>> skipChar '=' .>> s .>>. pPrimitiveExpr
         |>> fun (k, v) -> { Key = k; Value = v }
 
-    let private pArgBlock (keyword: string) : Parser<ArgBlock, ParseContext> =
+    let private pArgBlock (keyword: string) : Parser<ArgBlock> =
         opt (skipString keyword >>. s1 >>. sepBy1 pArgExpr (s .>> skipChar ',' .>> s))
         |>> fun ol ->
             match ol with
             | Some l -> l
             | None -> []
 
-    let pDynamicExpr: Parser<DynamicExpr, ParseContext> =
+    let pDynamicExpr: Parser<DynamicExpr> =
         choice
             [
                 skipString "satisfying" >>. s1 >>. pId .>> s1 .>>. (pArgBlock "where")

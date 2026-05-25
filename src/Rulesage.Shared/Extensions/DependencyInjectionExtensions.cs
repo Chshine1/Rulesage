@@ -16,10 +16,9 @@ public static class ServiceCollectionExtensions
 {
     extension(IServiceCollection collection)
     {
-        public IServiceCollection AddSharedModule(string dbConnectionString, string onnxModelPath, string vocabPath,
-            JsonSerializerOptions? jsonOptions = null)
+        public IServiceCollection AddSharedModule(string dbConnectionString, string onnxModelPath, string vocabPath)
         {
-            jsonOptions ??= new JsonSerializerOptions
+            var jsonOptions = new JsonSerializerOptions
             {
                 TypeInfoResolver = new DefaultJsonTypeInfoResolver()
             };
