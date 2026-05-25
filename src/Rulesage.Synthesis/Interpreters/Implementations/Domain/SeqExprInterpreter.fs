@@ -85,7 +85,7 @@ type SeqExprInterpreter
                     args
                     (fun withValues ->
                         task {
-                            let! node = nodeService.BuildAsync ct nodeSig.id withValues
+                            let! node = nodeService.BuildAsync ct nodeSig withValues
                             return node |> SynthesizedValue.Node
                         }
                     )

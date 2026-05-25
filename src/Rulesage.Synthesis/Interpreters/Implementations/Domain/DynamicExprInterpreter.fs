@@ -39,7 +39,7 @@ type DynamicExprInterpreter
                 match expr with
                 | DynamicExpr.Record(nodeSignature, args) ->
                     let! withValues = synthesizeArgsAsync ctx args
-                    let! node = nodeService.BuildAsync ctx.CtSource.Token nodeSignature.id withValues
+                    let! node = nodeService.BuildAsync ctx.CtSource.Token nodeSignature withValues
                     return node |> SynthesizedValue.Node
                 | DynamicExpr.ResultOf(actionId, args) ->
                     let! whereValues = synthesizeArgsAsync ctx args

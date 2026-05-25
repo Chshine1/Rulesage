@@ -11,5 +11,5 @@ type NlTaskResolver(operationRetrievalService: IRuleRetrievalService, operationC
                 let! prefetchedOps =
                     operationRetrievalService.RetrieveAsync(nlTask, System.Nullable(), cancellationToken)
 
-                return! operationComposer.ComposeAsync(nlTask, prefetchedOps, cancellationToken)
+                return! operationComposer.ComposeAsync(nlTask, prefetchedOps)
             }
