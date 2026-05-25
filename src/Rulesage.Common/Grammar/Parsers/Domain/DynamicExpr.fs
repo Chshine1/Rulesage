@@ -8,8 +8,8 @@ type ArgBlock = ArgExpr list
 
 type DynamicExpr =
     | Satisfying of ruleId: Identifier * args: ArgBlock
-    | ResultOf of actionId: Identifier * args: ArgBlock
-    | Record of nodeId: Identifier * args: ArgBlock
+    | ResultOf of action: (Identifier * string list) * args: ArgBlock
+    | Record of node: (Identifier * string list) * args: ArgBlock
 
 
 namespace Rulesage.Common.Grammar.Parsers.Domain
@@ -29,7 +29,7 @@ module Dynamic =
         |>> fun (k, v) -> { Key = k; Value = v }
 
     let private pArgBlock (keyword: string) : Parser<ArgBlock> =
-        opt (skipString keyword >>. s1 >>. sepBy1 pArgExpr (s .>> skipChar ',' .>> s))
+        opt (s1 >>. skipString keyword >>. s1 >>. spacedSep1 ',' pArgExpr)
         |>> fun ol ->
             match ol with
             | Some l -> l
@@ -38,10 +38,10 @@ module Dynamic =
     let pDynamicExpr: Parser<DynamicExpr> =
         choice
             [
-                skipString "satisfying" >>. s1 >>. pId .>> s1 .>>. (pArgBlock "where")
+                skipString "satisfying" >>. s1 >>. pId .>>. (pArgBlock "where")
                 |>> DynamicExpr.Satisfying
-                skipString "result of" >>. s1 >>. pId .>> s1 .>>. (pArgBlock "where")
+                skipString "result of" >>. s1 >>. pGenericId .>>. (pArgBlock "where")
                 |>> DynamicExpr.ResultOf
-                skipString "record" >>. s1 >>. pId .>> s1 .>>. (pArgBlock "with")
+                skipString "record" >>. s1 >>. pGenericId .>>. (pArgBlock "with")
                 |>> DynamicExpr.Record
             ]

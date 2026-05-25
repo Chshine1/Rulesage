@@ -13,8 +13,8 @@ type IterArgBlock = IterArgExpr list
 
 type SeqExpr =
     | Satisfying of ruleId: Identifier * args: IterArgBlock
-    | ResultOf of actionId: Identifier * args: IterArgBlock
-    | Record of nodeId: Identifier * args: IterArgBlock
+    | ResultOf of action: (Identifier * string list) * args: IterArgBlock
+    | Record of node: (Identifier * string list) * args: IterArgBlock
 
 
 namespace Rulesage.Common.Grammar.Parsers.Domain
@@ -36,7 +36,7 @@ module Seq =
         |>> fun ((k, o), v) -> { Key = k; Value = v; Iter = o.IsSome }
 
     let private pIterArgBlock (keyword: string) : Parser<IterArgBlock> =
-        opt (skipString keyword >>. s1 >>. sepBy1 pIterArgExpr (s .>> skipChar ',' .>> s))
+        opt (s1 >>. skipString keyword >>. s1 >>. spacedSep1 ',' pIterArgExpr)
         |>> fun ol ->
             match ol with
             | Some l -> l
@@ -47,10 +47,10 @@ module Seq =
         >>. s1
         >>. choice
                 [
-                    skipString "satisfying" >>. s1 >>. pId .>> s1 .>>. (pIterArgBlock "where")
+                    skipString "satisfying" >>. s1 >>. pId .>>. (pIterArgBlock "where")
                     |>> SeqExpr.Satisfying
-                    skipString "result of" >>. s1 >>. pId .>> s1 .>>. (pIterArgBlock "where")
+                    skipString "result of" >>. s1 >>. pGenericId .>>. (pIterArgBlock "where")
                     |>> SeqExpr.ResultOf
-                    skipString "record" >>. s1 >>. pId .>> s1 .>>. (pIterArgBlock "with")
+                    skipString "record" >>. s1 >>. pGenericId .>>. (pIterArgBlock "with")
                     |>> SeqExpr.Record
                 ]

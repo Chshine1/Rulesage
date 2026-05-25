@@ -37,13 +37,13 @@ type DynamicExprInterpreter
         member _.InterpretAsync ctx expr =
             task {
                 match expr with
-                | DynamicExpr.Record(nodeSignature, args) ->
+                | DynamicExpr.Record(record, args) ->
                     let! withValues = synthesizeArgsAsync ctx args
-                    let! node = nodeService.BuildAsync ctx.CtSource.Token nodeSignature withValues
+                    let! node = nodeService.BuildAsync ctx.CtSource.Token (fst record) withValues
                     return node |> SynthesizedValue.Node
-                | DynamicExpr.ResultOf(actionId, args) ->
+                | DynamicExpr.ResultOf(action, args) ->
                     let! whereValues = synthesizeArgsAsync ctx args
-                    return! actionService.CallAsync ctx.CtSource.Token actionId whereValues
+                    return! actionService.CallAsync ctx.CtSource.Token (fst action) whereValues
                 | DynamicExpr.Satisfying(ruleId, args) ->
                     let! subRule = ruleRepository.FindByIdAsync(ruleId, ctx.CtSource.Token)
                     let! whereValues = synthesizeArgsAsync ctx args

@@ -7,7 +7,7 @@ action groupBy<t> on array(t[]), groupKey(literal) returns record Tuple<literal,
 @"Find a dictionary value of the given key."
 action findInDictionary<tk, tv> on dictionary(record Tuple<tk, tv>[]), key(tk) returns tv
 
-@"A type spec reference. It only has a literal string *typeId*, which must be of `type-id := base-id ("[]")?`, and `base-id = "literal" | ("record" record-id generic-params) | type-id`. Here generic params are passed as `"<"t1,t2,...">"` if needed, and `t1,t2` are again type identifiers or generic names provided a generic context."
+@"A type spec reference. It only has a literal string *typeId*, which must be of `type-id := base-id (\"[]\")?`, and `base-id = \"literal\" | (\"record\" record-id generic-params) | type-id`. Here generic params are passed as `\"<\"t1,t2,...\">\"` if needed, and `t1,t2` are again type identifiers or generic names provided a generic context."
 record TypeSpec with typeId(literal)
 
 @"An add-record operation. It contains the complete RecordDef to be added to the ruleset."
@@ -19,7 +19,7 @@ record AddRuleDef with unit(record RuleDef)
 @"An add-action operation. It contains the complete ActionDef to be added to the ruleset."
 record AddAction with unit(record ActionDef)
 
-@"A removal operation. It identifies a unit of a given type (among 'rule'|'record'|'action') to be removed by its unique id."
+@"A removal operation. It identifies a unit of a given type (among \"rule\"|\"record\"|\"action\") to be removed by its unique id."
 record RemoveRulesetUnit with type(literal), unitId(literal)
 
 @"A replace-record operation. It provides the new full RecordDef whose id is the id of the target record to be replaced."

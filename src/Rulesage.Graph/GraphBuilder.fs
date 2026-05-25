@@ -25,7 +25,7 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
 
     let getRecordDepsToType (t: TypeExpr) : DependencyItem list =
         match t.Atomic with
-        | AtomicType.Record id -> [ DependencyItem.Record id ]
+        | AtomicType.Record (id, _) -> [ DependencyItem.Record id ]
         | _ -> []
 
     let rec getRefDepsToPrimitive (p: PrimitiveExpr) : DependencyItem list =
@@ -69,23 +69,23 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
             | DynamicExpr.Satisfying(ruleId, args) ->
                 let rs = getRefDepsToArgs args
                 (DependencyItem.Rule ruleId) :: rs
-            | DynamicExpr.ResultOf(actionId, args) ->
+            | DynamicExpr.ResultOf(action, args) ->
                 let rs = getRefDepsToArgs args
-                (DependencyItem.Action actionId) :: rs
-            | DynamicExpr.Record(recordId, args) ->
+                (DependencyItem.Action (fst action)) :: rs
+            | DynamicExpr.Record(record, args) ->
                 let rs = getRefDepsToArgs args
-                (DependencyItem.Record recordId) :: rs
+                (DependencyItem.Record (fst record)) :: rs
         | Seq s ->
             match s with
             | SeqExpr.Satisfying(ruleId, args) ->
                 let rs = getRefDepsToIterArgs args
                 (DependencyItem.Rule ruleId) :: rs
-            | SeqExpr.ResultOf(actionId, args) ->
+            | SeqExpr.ResultOf(action, args) ->
                 let rs = getRefDepsToIterArgs args
-                (DependencyItem.Action actionId) :: rs
-            | SeqExpr.Record(recordId, args) ->
+                (DependencyItem.Action (fst action)) :: rs
+            | SeqExpr.Record(record, args) ->
                 let rs = getRefDepsToIterArgs args
-                (DependencyItem.Record recordId) :: rs
+                (DependencyItem.Record (fst record)) :: rs
 
     let getDepsToParam (p: ParamExpr) : DependencyItem list = getRecordDepsToType p.Type
     let getDepsToGiven (g: GivenExpr) : DependencyItem list = getDepsToValue g.Value

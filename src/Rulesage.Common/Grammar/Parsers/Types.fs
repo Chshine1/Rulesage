@@ -2,7 +2,8 @@
 
 type AtomicType =
     | Literal
-    | Record of id: string
+    | Record of id: string * genericParams: string list
+    | Generic of name: string
 
 type TypeExpr = { Atomic: AtomicType; Dimension: int }
 
@@ -20,7 +21,8 @@ module Types =
         choice
             [
                 skipString "literal" >>% AtomicType.Literal
-                skipString "record" >>. s1 >>. pId |>> AtomicType.Record
+                skipString "record" >>. s1 >>. pGenericId |>> AtomicType.Record
+                regex "[a-zA-Z][a-zA-Z0-9]*" |>> AtomicType.Generic
             ]
 
     let pTypeExpr: Parser<TypeExpr> =

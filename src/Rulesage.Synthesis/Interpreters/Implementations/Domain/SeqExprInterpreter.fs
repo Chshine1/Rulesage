@@ -79,17 +79,17 @@ type SeqExprInterpreter
             let ct = ctx.CtSource.Token
 
             match expr with
-            | SeqExpr.Record(nodeSig, args) ->
+            | SeqExpr.Record(record, args) ->
                 processSeq
                     ctx
                     args
                     (fun withValues ->
                         task {
-                            let! node = nodeService.BuildAsync ct nodeSig withValues
+                            let! node = nodeService.BuildAsync ct (fst record) withValues
                             return node |> SynthesizedValue.Node
                         }
                     )
-            | SeqExpr.ResultOf(actionId, args) -> processSeq ctx args (actionService.CallAsync ct actionId)
+            | SeqExpr.ResultOf(action, args) -> processSeq ctx args (actionService.CallAsync ct (fst action))
             | SeqExpr.Satisfying(ruleId, args) ->
                 processSeq
                     ctx

@@ -11,6 +11,7 @@ namespace Rulesage.Common.Grammar.Parsers
 open FParsec
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
+open Rulesage.Common.Grammar.Parsers.Lexer
 open Rulesage.Common.Grammar.Parsers.Vars
 
 module Strings =
@@ -39,18 +40,18 @@ module Strings =
         |>> Seq.concat
 
     let pAnnotation: Parser<string> =
-        let pSection =
-            between
-                (skipChar '\"')
-                (skipChar '\"')
-                (manyChars (
-                    choice
-                        [
-                            noneOf "\"\\\n"
-                            skipString "\\\\" >>% '\\'
-                            skipString "\\\"" >>% '"'
-                            skipString "\\n" >>% '\n'
-                        ]
-                ))
+        let normalChar = satisfy (fun c -> c <> '\\' && c <> '"' && c <> '\n')
 
-        skipChar '@' >>. sepBy1 pSection (s >>. skipChar '+' >>. s) |>> String.concat ""
+        let unescape c =
+            match c with
+            | '\\' -> '\\'
+            | '"' -> '"'
+            | 'n' -> '\n'
+            | _ -> c
+
+        let escapedChar = skipChar '\\' >>. (anyOf "\\\"n" |>> unescape)
+
+        let pSection =
+            between (skipChar '"') (skipChar '"') (manyChars (normalChar <|> escapedChar))
+
+        skipChar '@' >>. spacedSep1 '+' pSection |>> String.concat ""
