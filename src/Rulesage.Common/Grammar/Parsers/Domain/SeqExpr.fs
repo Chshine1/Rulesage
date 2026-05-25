@@ -13,9 +13,8 @@ type IterArgBlock = IterArgExpr list
 
 type SeqExpr =
     | Satisfying of ruleId: Identifier * args: IterArgBlock
-    | ResultOf of action: (Identifier * string list) * args: IterArgBlock
-    | Record of node: (Identifier * string list) * args: IterArgBlock
-
+    | ResultOf of action: (Identifier * TypeExpr list) * args: IterArgBlock
+    | Record of node: (Identifier * TypeExpr list) * args: IterArgBlock
 
 namespace Rulesage.Common.Grammar.Parsers.Domain
 
@@ -24,6 +23,7 @@ open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
 open Rulesage.Common.Grammar.Parsers.Lexer
 open Rulesage.Common.Grammar.Parsers.Primitives
+open Rulesage.Common.Grammar.Parsers.Types
 
 module Seq =
     let private s = spaces
@@ -42,6 +42,12 @@ module Seq =
             | Some l -> l
             | None -> []
 
+    let private genericImpl: Parser<TypeExpr list> =
+        between (skipChar '<') (skipChar '>') (s >>. spacedSep1 ',' pTypeExpr .>> s)
+
+    let private pImplId: Parser<string * TypeExpr list> =
+        pId .>>. (opt genericImpl |>> Option.defaultValue [])
+
     let pSeqExpr: Parser<SeqExpr> =
         skipString "seq"
         >>. s1
@@ -49,8 +55,8 @@ module Seq =
                 [
                     skipString "satisfying" >>. s1 >>. pId .>>. (pIterArgBlock "where")
                     |>> SeqExpr.Satisfying
-                    skipString "result of" >>. s1 >>. pGenericId .>>. (pIterArgBlock "where")
+                    skipString "result of" >>. s1 >>. pImplId .>>. (pIterArgBlock "where")
                     |>> SeqExpr.ResultOf
-                    skipString "record" >>. s1 >>. pGenericId .>>. (pIterArgBlock "with")
+                    skipString "record" >>. s1 >>. pImplId .>>. (pIterArgBlock "with")
                     |>> SeqExpr.Record
                 ]

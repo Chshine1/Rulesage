@@ -2,10 +2,10 @@
 
 type AtomicType =
     | Literal
-    | Record of id: string * genericParams: string list
+    | Record of id: string * genericParams: TypeExpr list
     | Generic of name: string
 
-type TypeExpr = { Atomic: AtomicType; Dimension: int }
+and TypeExpr = { Atomic: AtomicType; Dimension: int }
 
 namespace Rulesage.Common.Grammar.Parsers
 
@@ -17,14 +17,24 @@ open Rulesage.Common.Grammar.Parsers.Lexer
 module Types =
     let private s1 = spaces1
 
-    let private pAtomicType: Parser<AtomicType> =
-        choice
-            [
-                skipString "literal" >>% AtomicType.Literal
-                skipString "record" >>. s1 >>. pGenericId |>> AtomicType.Record
-                regex "[a-zA-Z][a-zA-Z0-9]*" |>> AtomicType.Generic
-            ]
+    let private pAtomicType, pAtomicTypeRef =
+        createParserForwardedToRef<AtomicType, unit> ()
 
     let pTypeExpr: Parser<TypeExpr> =
         pAtomicType .>>. many (skipString "[]")
         |>> fun (a, l) -> { Atomic = a; Dimension = l.Length }
+
+    pAtomicTypeRef.Value <-
+        choice
+            [
+                attempt (
+                    skipString "literal" .>> notFollowedBy (regex "[a-zA-Z0-9-]")
+                    >>% AtomicType.Literal
+                )
+                attempt (
+                    skipString "record" >>. s1 >>. pId
+                    .>>. opt (between (skipChar '<') (skipChar '>') (s >>. spacedSep1 ',' pTypeExpr))
+                    |>> fun (name, args) -> AtomicType.Record(name, defaultArg args [])
+                )
+                regex "[a-zA-Z-][a-zA-Z0-9-]*" |>> AtomicType.Generic
+            ]
