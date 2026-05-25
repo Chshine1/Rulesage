@@ -11,6 +11,7 @@ open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
 open Rulesage.Graph.Services.Abstractions
 
+[<CLIMutable>]
 type GraphConfig = { R: int; SimThreshold: float }
 
 type DependencyItem =

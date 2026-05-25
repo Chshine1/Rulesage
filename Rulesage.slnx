@@ -4,7 +4,6 @@
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
-    <File Path="appsettings.json" />
     <File Path="docker-compose.yml" />
     <File Path="README.md" />
   </Folder>

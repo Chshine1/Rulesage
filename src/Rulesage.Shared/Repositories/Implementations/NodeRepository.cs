@@ -1,12 +1,10 @@
-﻿using System.Text.Json;
-using Microsoft.FSharp.Collections;
-using Npgsql;
+﻿using Npgsql;
 using Rulesage.Common.Grammar.Ast;
 using Rulesage.Shared.Repositories.Abstractions;
 
 namespace Rulesage.Shared.Repositories.Implementations;
 
-public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions jsonOptions): INodeRepository
+public class NodeRepository(NpgsqlDataSource dataSource): INodeRepository
 {
     public async Task<IEnumerable<string>> GetDocumentsAsync(CancellationToken cancellationToken = default)
     {
