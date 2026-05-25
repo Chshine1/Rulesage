@@ -62,8 +62,8 @@ record RuleDef with
 @"A value expression appearing in a rule, represented as a literal field whose value is a string in the ValueExpr DSL."
 +"\nThe DSL is a line‑based format. Each line is one of:"
 +"\n  - `var <name> [.<field> ...]`: variable reference with optional field path."
-+"\n  - `"<template>"`: interpolated string."
-+"\n  - `ref(<type>) "<subject>"`: sub‑interpretation. `<subject>` is a natural‑language noun phrase that describes the value the system is to construct; `<type>` is the expected type for the product."
++"\n  - `\"<template>\"`: interpolated string."
++"\n  - `ref(<type>) \"<subject>\"`: sub‑interpretation. `<subject>` is a natural‑language noun phrase that describes the value the system is to construct; `<type>` is the expected type for the product."
 +"\n  - `array [ <elem1>, <elem2>, ...]`: array literal."
 +"\n  - `record <typeId> with <field1> = <expr>, <field2> = <expr>, ...`: record construction."
 +"\n  - `satisfying <ruleId> where <arg1> = <expr>, ...`: definite rule call."
@@ -196,4 +196,4 @@ must be: result of findSectionInRuleset where query = $given.rulesetQuery
 @"Interprets a literal project items expectation into a literal expectation of a ruleset item."
 rule interpret-project-items for expectationPhrase(literal)
 must be:
-  rulesetExp = ref(literal) "an expectation literal of existing ruleset items which fully describe the expectation for project items: {$for.expectationPhrase}"
+  ref(literal) "an expectation literal of existing ruleset items which fully describe the expectation for project items: {$for.expectationPhrase}"

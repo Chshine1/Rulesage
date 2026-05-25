@@ -58,11 +58,18 @@ module Rule =
         |>> fun (k, v) -> { Key = k; Value = v }
 
     let private pGivenBlock: Parser<GivenExpr list> =
-        opt (s1 >>. skipString "given" >>. s >>. skipChar ':' >>. s >>. sepBy1 pGivenExpr s1)
+        opt (
+            (attempt (s1 >>. skipString "given"))
+            >>. s
+            >>. skipChar ':'
+            >>. s
+            >>. (pGivenExpr .>>. many (attempt (s1 >>. pGivenExpr)))
+            |>> (fun (n, l) -> n :: l)
+        )
         |>> Option.defaultValue []
 
     let private pMustBeExpr: Parser<ValueExpr> =
-        skipString "must be" >>. s >>. skipChar ':' >>. s >>. pValueExpr
+        s1 >>. skipString "must be" >>. s >>. skipChar ':' >>. s >>. pValueExpr
 
     let pRule (annotation: string) : Parser<RuleExpr> =
         skipString "rule" .>> s1 >>. pId
