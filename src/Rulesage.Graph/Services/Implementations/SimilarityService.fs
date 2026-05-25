@@ -18,5 +18,5 @@ type SimilarityService(embeddingService: IEmbeddingService) =
                     length1 <- length1 + (embeddings[0][i] * embeddings[0][i])
                     length2 <- length2 + (embeddings[1][i] * embeddings[1][i])
 
-                return sum / Math.Sqrt (length1 * length2)
+                return sum / Math.Sqrt(length1 * length2)
             }

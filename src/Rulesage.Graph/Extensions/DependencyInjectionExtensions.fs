@@ -11,8 +11,8 @@ type ServiceCollectionExtensions =
     [<Extension>]
     static member AddGraphModule(services: IServiceCollection, config: IConfiguration) =
         services.Configure<GraphConfig>(config.GetSection("Graph")) |> ignore
-        services
-            .AddScoped<ISimilarityService, SimilarityService>()
-            .AddScoped<IGraphBuilder, GraphBuilder>()
-            |> ignore
+
+        services.AddScoped<ISimilarityService, SimilarityService>().AddScoped<IGraphBuilder, GraphBuilder>()
+        |> ignore
+
         services

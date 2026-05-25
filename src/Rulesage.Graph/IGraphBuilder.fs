@@ -25,4 +25,7 @@ type RulesageGraph =
     }
 
 type IGraphBuilder =
-    abstract member BuildAsync: rules: RuleExpr seq -> records: RecordExpr seq -> actions: ActionExpr seq -> Task<RulesageGraph>
+    abstract member BuildAsync:
+        rules: RuleExpr seq * records: RecordExpr seq * actions: ActionExpr seq -> Task<RulesageGraph>
+
+    abstract member ToDotAsync: rules: RuleExpr seq * records: RecordExpr seq * actions: ActionExpr seq -> Task<string>

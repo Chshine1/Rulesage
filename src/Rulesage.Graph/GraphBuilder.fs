@@ -5,6 +5,8 @@ open System.Collections.Generic
 open System.Threading.Tasks
 open Microsoft.Extensions.Options
 open QuikGraph
+open QuikGraph.Graphviz
+open QuikGraph.Graphviz.Dot
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
 open Rulesage.Graph.Services.Abstractions
@@ -86,16 +88,14 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
 
     let getDepsToParam (p: ParamExpr) : DependencyItem list = getRecordDepsToType p.Type
     let getDepsToGiven (g: GivenExpr) : DependencyItem list = getDepsToValue g.Value
-    
+
     interface IGraphBuilder with
         member _.BuildAsync
-            (rules: RuleExpr seq)
-            (records: RecordExpr seq)
-            (actions: ActionExpr seq)
+            (rules: RuleExpr seq, records: RecordExpr seq, actions: ActionExpr seq)
             : Task<RulesageGraph> =
             task {
                 let structuralGraph = BidirectionalGraph<NodeId, StructuralEdge>()
-                let semanticGraph   = UndirectedGraph<NodeId, SemanticEdge>()
+                let semanticGraph = UndirectedGraph<NodeId, SemanticEdge>()
 
                 let mutable nodesMap = Map.empty<NodeId, GraphNode>
 
@@ -104,7 +104,7 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                 let ensureVertex (id: NodeId) =
                     if addedVertices.Add(id) then
                         structuralGraph.AddVertex(id) |> ignore
-                        semanticGraph.AddVertex(id)   |> ignore
+                        semanticGraph.AddVertex(id) |> ignore
 
                 let addNode (id: NodeId) (desc: string) =
                     if not (nodesMap.ContainsKey id) then
@@ -116,7 +116,7 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                         let sourceId =
                             match dep with
                             | DependencyItem.Record id -> NodeId.Record id
-                            | DependencyItem.Rule id   -> NodeId.Rule id
+                            | DependencyItem.Rule id -> NodeId.Rule id
                             | DependencyItem.Action id -> NodeId.Action id
                             | DependencyItem.Ref expr ->
                                 let refId = NodeId.Ref $"ref_{Guid.NewGuid()}"
@@ -144,8 +144,8 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                 for r in rules do
                     let id = NodeId.Rule r.Id
                     addNode id r.Annotation
-                    let typeDeps   = r.Fors.Values |> Seq.collect getDepsToParam
-                    let givenDeps  = r.Givens.Values |> Seq.collect getDepsToGiven
+                    let typeDeps = r.Fors.Values |> Seq.collect getDepsToParam
+                    let givenDeps = r.Givens.Values |> Seq.collect getDepsToGiven
                     let mustBeDeps = r.MustBe |> getDepsToValue
                     let allDeps = Seq.append mustBeDeps (Seq.append givenDeps typeDeps)
                     addStructEdges id allDeps
@@ -153,7 +153,7 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                 let nodeIds = nodesMap |> Map.keys |> Seq.toArray
                 let n = nodeIds.Length
 
-                let simMatrix      = Array2D.create n n 0.0
+                let simMatrix = Array2D.create n n 0.0
                 let distanceMatrix = Array2D.create n n 0.0
 
                 for i in 0 .. n - 1 do
@@ -167,29 +167,52 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                         distanceMatrix[j, i] <- 1.0 - sim
 
                 let localScales =
-                    Array.init n (fun i ->
-                        let sims = Array.init n (fun j -> simMatrix[i, j])
-                        sims
-                        |> Array.sortDescending
-                        |> Array.tryItem (_config.R - 1)
-                        |> Option.defaultValue 0.0
-                    )
+                    Array.init
+                        n
+                        (fun i ->
+                            let sims = Array.init n (fun j -> simMatrix[i, j])
+
+                            sims
+                            |> Array.sortDescending
+                            |> Array.tryItem (_config.R - 1)
+                            |> Option.defaultValue 0.0
+                        )
 
                 for i in 0 .. n - 1 do
                     for j in i + 1 .. n - 1 do
                         let scaledSim =
-                            Math.Exp(
-                                - distanceMatrix[i, j] * distanceMatrix[i, j]
-                                / (localScales[i] * localScales[j])
-                            )
+                            Math.Exp(-distanceMatrix[i, j] * distanceMatrix[i, j] / (localScales[i] * localScales[j]))
+
                         if scaledSim > _config.SimThreshold then
-                            let semEdge =
-                                TaggedUndirectedEdge(nodeIds[i], nodeIds[j], scaledSim)
+                            let semEdge = TaggedUndirectedEdge(nodeIds[i], nodeIds[j], scaledSim)
                             semanticGraph.AddEdge(semEdge) |> ignore
 
-                return {
-                    Nodes = nodesMap
-                    StructuralLayer = structuralGraph
-                    SemanticLayer = semanticGraph
-                }
+                return
+                    {
+                        Nodes = nodesMap
+                        StructuralLayer = structuralGraph
+                        SemanticLayer = semanticGraph
+                    }
+            }
+
+        member this.ToDotAsync(rules, records, actions) =
+            task {
+                let! graph = (this :> IGraphBuilder).BuildAsync(rules, records, actions)
+                let graphviz = GraphvizAlgorithm<NodeId, Edge<NodeId>>(graph.StructuralLayer)
+                graphviz.CommonVertexFormat.Style <- GraphvizVertexStyle.Filled
+                graphviz.CommonVertexFormat.FillColor <- GraphvizColor(255uy, 255uy, 150uy, 255uy)
+
+                graphviz.FormatVertex.Add(fun args ->
+                    match args.Vertex with
+                    | NodeId.Record _ ->
+                        args.VertexFormat.Label <- $"{args.Vertex}"
+                        args.VertexFormat.FillColor <- GraphvizColor(200uy, 230uy, 255uy, 255uy)
+                    | NodeId.Rule _ -> args.VertexFormat.Shape <- GraphvizVertexShape.Box
+                    | NodeId.Action _ -> args.VertexFormat.Shape <- GraphvizVertexShape.Diamond
+                    | NodeId.Ref _ -> args.VertexFormat.Style <- GraphvizVertexStyle.Dashed
+                )
+
+                graphviz.FormatEdge.Add(fun args -> args.EdgeFormat.StrokeColor <- GraphvizColor.Black)
+
+                return graphviz.Generate()
             }
