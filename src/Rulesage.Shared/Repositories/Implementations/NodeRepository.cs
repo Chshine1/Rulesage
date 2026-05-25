@@ -40,17 +40,7 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         cmd.Parameters.Add(ids.ToArray());
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
         
-        return ReadToEnumerable(reader, r =>
-        {
-            var parameters =
-                JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(2), jsonOptions);
-
-            return new RecordExpr(
-                r.GetString(0),
-                r.GetString(1),
-                parameters
-            );
-        });
+        throw new NotImplementedException();
     }
 
     public async Task<IEnumerable<(RecordExpr, float)>> FindOrderByCosineDistanceAsync(double[] queryVector, int skip, int take,
@@ -73,26 +63,8 @@ public class NodeRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
                 """,
                 conn
             );
-
-        cmd.Parameters.Add(queryVector);
-        cmd.Parameters.Add(take);
-        cmd.Parameters.Add(skip);
-        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-
-        return ReadToEnumerable(reader, r =>
-        {
-            var parameters =
-                JsonSerializer.Deserialize<FSharpMap<string, ParamType>>(r.GetString(2), jsonOptions);
-
-            return (
-                new RecordExpr(
-                    r.GetString(0),
-                    r.GetString(1),
-                    parameters
-                ),
-                (float)r.GetDouble(3)
-            );
-        });
+        
+        throw new NotImplementedException();
     }
 
     private static IEnumerable<T> ReadToEnumerable<T>(NpgsqlDataReader reader, Func<NpgsqlDataReader, T> func)
