@@ -27,5 +27,9 @@
     <ItemGroup>
         <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest"/>
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Resources\Rules\dot\" />
+    </ItemGroup>
     
 </Project>

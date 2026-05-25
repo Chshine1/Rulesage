@@ -25,7 +25,7 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
 
     let getRecordDepsToType (t: TypeExpr) : DependencyItem list =
         match t.Atomic with
-        | AtomicType.Record (id, _) -> [ DependencyItem.Record id ]
+        | AtomicType.Record(id, _) -> [ DependencyItem.Record id ]
         | _ -> []
 
     let rec getRefDepsToPrimitive (p: PrimitiveExpr) : DependencyItem list =
@@ -71,10 +71,10 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                 (DependencyItem.Rule ruleId) :: rs
             | DynamicExpr.ResultOf(action, args) ->
                 let rs = getRefDepsToArgs args
-                (DependencyItem.Action (fst action)) :: rs
+                DependencyItem.Action(fst action) :: rs
             | DynamicExpr.Record(record, args) ->
                 let rs = getRefDepsToArgs args
-                (DependencyItem.Record (fst record)) :: rs
+                DependencyItem.Record(fst record) :: rs
         | Seq s ->
             match s with
             | SeqExpr.Satisfying(ruleId, args) ->
@@ -82,10 +82,10 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                 (DependencyItem.Rule ruleId) :: rs
             | SeqExpr.ResultOf(action, args) ->
                 let rs = getRefDepsToIterArgs args
-                (DependencyItem.Action (fst action)) :: rs
+                DependencyItem.Action(fst action) :: rs
             | SeqExpr.Record(record, args) ->
                 let rs = getRefDepsToIterArgs args
-                (DependencyItem.Record (fst record)) :: rs
+                DependencyItem.Record(fst record) :: rs
 
     let getDepsToParam (p: ParamExpr) : DependencyItem list = getRecordDepsToType p.Type
     let getDepsToGiven (g: GivenExpr) : DependencyItem list = getDepsToValue g.Value
@@ -121,7 +121,17 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                             | DependencyItem.Action id -> NodeId.Action id
                             | DependencyItem.Ref expr ->
                                 let refId = NodeId.Ref $"ref_{Guid.NewGuid()}"
-                                addNode refId (expr.ToString())
+
+                                addNode
+                                    refId
+                                    (expr.Desc
+                                     |> Seq.map (fun s ->
+                                         match s with
+                                         | StringPart.Literal l -> l
+                                         | StringPart.Interpolation _ -> ""
+                                     )
+                                     |> String.Concat)
+
                                 refId
 
                         ensureVertex sourceId
@@ -154,7 +164,6 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                 let nodeIds = nodesMap |> Map.keys |> Seq.toArray
                 let n = nodeIds.Length
 
-                let simMatrix = Array2D.create n n 0.0
                 let distanceMatrix = Array2D.create n n 0.0
 
                 for i in 0 .. n - 1 do
@@ -163,8 +172,6 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                         let desc2 = nodesMap[nodeIds[j]].Description
                         let! sim = simService.ComputeSimilarityAsync desc1 desc2
                         let dsim = sim |> Convert.ToDouble
-                        simMatrix[i, j] <- dsim
-                        simMatrix[j, i] <- dsim
                         distanceMatrix[i, j] <- 1.0 - dsim
                         distanceMatrix[j, i] <- 1.0 - dsim
 
@@ -172,10 +179,10 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
                     Array.init
                         n
                         (fun i ->
-                            let sims = Array.init n (fun j -> simMatrix[i, j])
+                            let dists = Array.init n (fun j -> distanceMatrix[i, j])
 
-                            sims
-                            |> Array.sortDescending
+                            dists
+                            |> Array.sort
                             |> Array.tryItem (_config.R - 1)
                             |> Option.defaultValue 0.0
                         )
@@ -200,21 +207,39 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
         member this.ToDotAsync(rules, records, actions) =
             task {
                 let! graph = (this :> IGraphBuilder).BuildAsync(rules, records, actions)
-                let graphviz = GraphvizAlgorithm<NodeId, Edge<NodeId>>(graph.StructuralLayer)
-                graphviz.CommonVertexFormat.Style <- GraphvizVertexStyle.Filled
-                graphviz.CommonVertexFormat.FillColor <- GraphvizColor(255uy, 255uy, 150uy, 255uy)
+                let structural = GraphvizAlgorithm<NodeId, Edge<NodeId>>(graph.StructuralLayer)
+                structural.CommonVertexFormat.Style <- GraphvizVertexStyle.Filled
+                structural.CommonVertexFormat.FillColor <- GraphvizColor(255uy, 255uy, 150uy, 255uy)
 
-                graphviz.FormatVertex.Add(fun args ->
+                structural.FormatVertex.Add(fun args ->
                     match args.Vertex with
-                    | NodeId.Record _ ->
-                        args.VertexFormat.Label <- $"{args.Vertex}"
-                        args.VertexFormat.FillColor <- GraphvizColor(200uy, 230uy, 255uy, 255uy)
-                    | NodeId.Rule _ -> args.VertexFormat.Shape <- GraphvizVertexShape.Box
+                    | NodeId.Record _ -> args.VertexFormat.Shape <- GraphvizVertexShape.InvTrapezium
+                    | NodeId.Rule _ -> args.VertexFormat.Shape <- GraphvizVertexShape.MSquare
                     | NodeId.Action _ -> args.VertexFormat.Shape <- GraphvizVertexShape.Diamond
-                    | NodeId.Ref _ -> args.VertexFormat.Style <- GraphvizVertexStyle.Dashed
+                    | NodeId.Ref _ ->
+                        args.VertexFormat.Style <- GraphvizVertexStyle.Dashed
+                        args.VertexFormat.Shape <- GraphvizVertexShape.Circle
                 )
 
-                graphviz.FormatEdge.Add(fun args -> args.EdgeFormat.StrokeColor <- GraphvizColor.Black)
+                structural.FormatEdge.Add(fun args -> args.EdgeFormat.StrokeColor <- GraphvizColor.Black)
 
-                return graphviz.Generate()
+                let semantic =
+                    GraphvizAlgorithm<NodeId, TaggedUndirectedEdge<NodeId, float>>(graph.SemanticLayer)
+
+                semantic.CommonVertexFormat.Style <- GraphvizVertexStyle.Filled
+                semantic.CommonVertexFormat.FillColor <- GraphvizColor(255uy, 255uy, 150uy, 255uy)
+
+                semantic.FormatVertex.Add(fun args ->
+                    match args.Vertex with
+                    | NodeId.Record _ -> args.VertexFormat.Shape <- GraphvizVertexShape.InvTrapezium
+                    | NodeId.Rule _ -> args.VertexFormat.Shape <- GraphvizVertexShape.MSquare
+                    | NodeId.Action _ -> args.VertexFormat.Shape <- GraphvizVertexShape.Diamond
+                    | NodeId.Ref _ ->
+                        args.VertexFormat.Style <- GraphvizVertexStyle.Dashed
+                        args.VertexFormat.Shape <- GraphvizVertexShape.Circle
+                )
+
+                semantic.FormatEdge.Add(fun args -> args.EdgeFormat.StrokeColor <- GraphvizColor.Black)
+
+                return structural.Generate(), semantic.Generate()
             }
