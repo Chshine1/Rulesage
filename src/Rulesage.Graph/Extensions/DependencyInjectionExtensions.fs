@@ -12,7 +12,7 @@ type ServiceCollectionExtensions =
     static member AddGraphModule(services: IServiceCollection, config: IConfiguration) =
         services.Configure<GraphConfig>(config.GetSection("Graph")) |> ignore
 
-        services.AddScoped<IStructureBuilder, StructureBuilder>().AddScoped<IGraphBuilder, GraphBuilder>()
+        services.AddTransient<IStructureBuilder, StructureBuilder>().AddScoped<IGraphBuilder, GraphBuilder>()
         |> ignore
 
         services

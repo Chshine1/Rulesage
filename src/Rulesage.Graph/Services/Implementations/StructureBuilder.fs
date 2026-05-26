@@ -18,6 +18,7 @@ type StructureBuilder() =
                 | None -> Some { Id = id; Description = desc }
                 | some -> some
                 )
+
         structuralGraph.AddVertex(id) |> ignore
 
     let rec addRefDeps source p =
@@ -76,7 +77,7 @@ type StructureBuilder() =
             processExpr v
 
     interface IStructureBuilder with
-        member this.Build rules records actions =
+        member _.Build rules records actions =
             for r in records do
                 let id = NodeId.Record r.Id
                 addNode id r.Annotation

@@ -6,8 +6,11 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="GraphConfig.fs" />
         <Compile Include="Services\Abstractions\IStructureBuilder.fs" />
+        <Compile Include="Services\Abstractions\IDescriptionCleaner.fs" />
         <Compile Include="Services\Implementations\StructureBuilder.fs" />
+        <Compile Include="Services\Implementations\DescriptionCleaner.fs" />
         <Compile Include="IGraphBuilder.fs" />
         <Compile Include="GraphBuilder.fs" />
         <Compile Include="Extensions\DependencyInjectionExtensions.fs" />
