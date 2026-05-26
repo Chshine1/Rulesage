@@ -12,9 +12,8 @@ type DescriptionCleaner(config: IOptions<GraphConfig>) =
         member _.Clean size descriptions =
             let tokenizedDocs =
                 descriptions
-                |> Seq.map (fun d ->
-                    d.Split([| ' '; '\n'; '\t'; '.'; ','; '"'; '('; ')' |], StringSplitOptions.RemoveEmptyEntries)
-                )
+                |> Seq.map
+                    _.Split([| ' '; '\n'; '\t'; '.'; ','; '"'; '('; ')' |], StringSplitOptions.RemoveEmptyEntries)
 
             let df =
                 tokenizedDocs

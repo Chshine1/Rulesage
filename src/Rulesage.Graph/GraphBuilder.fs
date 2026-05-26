@@ -1,6 +1,5 @@
 ﻿namespace Rulesage.Graph
 
-open System
 open System.Collections.Concurrent
 open System.Collections.Generic
 open System.Threading.Tasks
@@ -18,6 +17,7 @@ type GraphBuilder
         embeddingService: IEmbeddingService,
         structureBuilder: IStructureBuilder,
         descriptionCleaner: IDescriptionCleaner,
+        semanticGraphBuilder: ISemanticGraphBuilder,
         config: IOptions<GraphConfig>
     ) =
     let _config = config.Value
@@ -49,8 +49,6 @@ type GraphBuilder
             : Task<RulesageGraph> =
             task {
                 let nodesMap, structuralGraph = structureBuilder.Build rules records actions
-                let semanticGraph = UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>>()
-                semanticGraph.AddVertexRange(structuralGraph.Vertices) |> ignore
 
                 let nodeIds = nodesMap.Keys |> Array.ofSeq
                 let n = nodeIds.Length
@@ -62,43 +60,8 @@ type GraphBuilder
                     }
 
                 let cleanedDescriptions = descriptionCleaner.Clean n descriptions
-
-                let embeddings = embeddingService.GetBatchEmbeddings(cleanedDescriptions)
-
-                let distanceMatrix = Array2D.create n n 0.0
-
-                let dotProduct (a: float32[]) (b: float32[]) =
-                    let mutable sum = 0.0f
-
-                    for k in 0 .. a.Length - 1 do
-                        sum <- sum + a[k] * b[k]
-
-                    sum
-
-                for i in 0 .. n - 1 do
-                    for j in i + 1 .. n - 1 do
-                        let sim = dotProduct embeddings[i] embeddings[j]
-                        let dsim = sim |> Convert.ToDouble
-                        distanceMatrix[i, j] <- 1.0 - dsim
-                        distanceMatrix[j, i] <- 1.0 - dsim
-
-                let localScales =
-                    Array.init
-                        n
-                        (fun i ->
-                            let dists = Array.init n (fun j -> distanceMatrix[i, j])
-
-                            dists |> Array.sort |> Array.tryItem (_config.R - 1) |> Option.defaultValue 0.0
-                        )
-
-                for i in 0 .. n - 1 do
-                    for j in i + 1 .. n - 1 do
-                        let scaledSim =
-                            Math.Exp(-distanceMatrix[i, j] * distanceMatrix[i, j] / (localScales[i] * localScales[j]))
-
-                        if scaledSim > _config.SimThreshold then
-                            let semEdge = TaggedUndirectedEdge(nodeIds[i], nodeIds[j], scaledSim)
-                            semanticGraph.AddEdge(semEdge) |> ignore
+                let embeddings = embeddingService.GetBatchEmbeddings cleanedDescriptions
+                let semanticGraph = semanticGraphBuilder.Build nodeIds embeddings
 
                 return
                     {
