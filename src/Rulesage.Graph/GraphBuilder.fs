@@ -9,8 +9,8 @@ open QuikGraph
 open QuikGraph.Algorithms.Search
 open QuikGraph.Graphviz
 open QuikGraph.Graphviz.Dot
-open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
+open Rulesage.Graph.Services.Abstractions
 open Rulesage.Shared.Services.Abstractions
 
 [<CLIMutable>]
@@ -24,13 +24,8 @@ type GraphConfig =
         PropergateMaxIter: int
     }
 
-type DependencyItem =
-    | Record of id: Identifier
-    | Rule of id: Identifier
-    | Action of id: Identifier
-    | Ref of expr: RefExpr
-
-type GraphBuilder(embeddingService: IEmbeddingService, config: IOptions<GraphConfig>) =
+type GraphBuilder
+    (embeddingService: IEmbeddingService, structureBuilder: IStructureBuilder, config: IOptions<GraphConfig>) =
     let _config = config.Value
 
     let bfsDistances (graph: UndirectedBidirectionalGraph<NodeId, Edge<NodeId>>) (root: NodeId) =
@@ -54,143 +49,14 @@ type GraphBuilder(embeddingService: IEmbeddingService, config: IOptions<GraphCon
 
         distances
 
-    let getRecordDepsToType (t: TypeExpr) : DependencyItem list =
-        match t.Atomic with
-        | AtomicType.Record(id, _) -> [ DependencyItem.Record id ]
-        | _ -> []
-
-    let rec getRefDepsToPrimitive (p: PrimitiveExpr) : DependencyItem list =
-        match p with
-        | PrimitiveExpr.StringLiteral _
-        | Var _ -> []
-        | PrimitiveExpr.Ref r -> [ DependencyItem.Ref r ]
-        | PrimitiveExpr.Array arr ->
-            arr
-            |> List.fold
-                (fun rs x ->
-                    let r = getRefDepsToPrimitive x
-                    rs @ r
-                )
-                []
-
-    // Arg items can only be assigned primitive values, thus only refs
-    let getRefDepsToArgs (args: ArgBlock) : DependencyItem list =
-        args
-        |> List.fold
-            (fun rs arg ->
-                let r = getRefDepsToPrimitive arg.Value
-                rs @ r
-            )
-            []
-
-    let getRefDepsToIterArgs (args: IterArgBlock) : DependencyItem list =
-        args
-        |> List.fold
-            (fun rs arg ->
-                let r = getRefDepsToPrimitive arg.Value
-                rs @ r
-            )
-            []
-
-    let rec getDepsToValue (v: ValueExpr) : DependencyItem list =
-        match v with
-        | Primitive p -> getRefDepsToPrimitive p
-        | Dynamic d ->
-            match d with
-            | DynamicExpr.Satisfying(ruleId, args) ->
-                let rs = getRefDepsToArgs args
-                (DependencyItem.Rule ruleId) :: rs
-            | DynamicExpr.ResultOf(action, args) ->
-                let rs = getRefDepsToArgs args
-                DependencyItem.Action(fst action) :: rs
-            | DynamicExpr.Record(record, args) ->
-                let rs = getRefDepsToArgs args
-                DependencyItem.Record(fst record) :: rs
-        | Seq s ->
-            match s with
-            | SeqExpr.Satisfying(ruleId, args) ->
-                let rs = getRefDepsToIterArgs args
-                (DependencyItem.Rule ruleId) :: rs
-            | SeqExpr.ResultOf(action, args) ->
-                let rs = getRefDepsToIterArgs args
-                DependencyItem.Action(fst action) :: rs
-            | SeqExpr.Record(record, args) ->
-                let rs = getRefDepsToIterArgs args
-                DependencyItem.Record(fst record) :: rs
-
-    let getDepsToParam (p: ParamExpr) : DependencyItem list = getRecordDepsToType p.Type
-    let getDepsToGiven (g: GivenExpr) : DependencyItem list = getDepsToValue g.Value
-
     interface IGraphBuilder with
         member _.BuildAsync
             (rules: RuleExpr seq, records: RecordExpr seq, actions: ActionExpr seq)
             : Task<RulesageGraph> =
             task {
-                let structuralGraph = BidirectionalGraph<NodeId, Edge<NodeId>>()
-                let semanticGraph = UndirectedGraph<NodeId, SemanticEdge>()
-
-                let mutable nodesMap = Map.empty<NodeId, GraphNode>
-
-                let addedVertices = HashSet<NodeId>()
-
-                let ensureVertex (id: NodeId) =
-                    if addedVertices.Add(id) then
-                        structuralGraph.AddVertex(id) |> ignore
-                        semanticGraph.AddVertex(id) |> ignore
-
-                let addNode (id: NodeId) (desc: string) =
-                    if not (nodesMap.ContainsKey id) then
-                        nodesMap <- Map.add id { Id = id; Description = desc } nodesMap
-                        ensureVertex id
-
-                let addStructEdges (targetId: NodeId) (sources: DependencyItem seq) =
-                    for dep in sources do
-                        let sourceId =
-                            match dep with
-                            | DependencyItem.Record id -> NodeId.Record id
-                            | DependencyItem.Rule id -> NodeId.Rule id
-                            | DependencyItem.Action id -> NodeId.Action id
-                            | DependencyItem.Ref expr ->
-                                let refId = NodeId.Ref $"ref_{Guid.NewGuid()}"
-
-                                addNode
-                                    refId
-                                    (expr.Desc
-                                     |> Seq.map (fun s ->
-                                         match s with
-                                         | StringPart.Literal l -> l
-                                         | StringPart.Interpolation _ -> ""
-                                     )
-                                     |> String.Concat)
-
-                                refId
-
-                        ensureVertex sourceId
-                        ensureVertex targetId
-
-                        structuralGraph.AddEdge(Edge(sourceId, targetId)) |> ignore
-
-                for r in records do
-                    let id = NodeId.Record r.Id
-                    addNode id r.Annotation
-                    let deps = r.Fors.Values |> Seq.collect getDepsToParam
-                    addStructEdges id deps
-
-                for a in actions do
-                    let id = NodeId.Action a.Id
-                    addNode id a.Annotation
-                    let paramDeps = a.Fors.Values |> Seq.collect getDepsToParam
-                    let retDeps = getRecordDepsToType a.Returns
-                    addStructEdges id (Seq.append retDeps paramDeps)
-
-                for r in rules do
-                    let id = NodeId.Rule r.Id
-                    addNode id r.Annotation
-                    let typeDeps = r.Fors.Values |> Seq.collect getDepsToParam
-                    let givenDeps = r.Givens.Values |> Seq.collect getDepsToGiven
-                    let mustBeDeps = r.MustBe |> getDepsToValue
-                    let allDeps = Seq.append mustBeDeps (Seq.append givenDeps typeDeps)
-                    addStructEdges id allDeps
+                let nodesMap, structuralGraph = structureBuilder.Build rules records actions
+                let semanticGraph = UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>>()
+                semanticGraph.AddVertexRange(structuralGraph.Vertices) |> ignore
 
                 let nodeIds = nodesMap |> Map.keys |> Seq.toArray
                 let n = nodeIds.Length

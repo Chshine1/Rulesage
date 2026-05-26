@@ -10,27 +10,6 @@ action findInDictionary<tk, tv> on dictionary(record Tuple<tk, tv>[]), key(tk) r
 @"A type spec reference. It only has a literal string *typeId*, which must be of `type-id := base-id (\"[]\")?`, and `base-id = \"literal\" | (\"record\" record-id generic-params) | type-id`. Here generic params are passed as `\"<\"t1,t2,...\">\"` if needed, and `t1,t2` are again type identifiers or generic names provided a generic context."
 record TypeSpec with typeId(literal)
 
-@"An add-record operation. It contains the complete RecordDef to be added to the ruleset."
-record AddRecordDef with unit(record RecordDef)
-
-@"An add-rule operation. It contains the complete RuleDef to be added to the ruleset."
-record AddRuleDef with unit(record RuleDef)
-
-@"An add-action operation. It contains the complete ActionDef to be added to the ruleset."
-record AddAction with unit(record ActionDef)
-
-@"A removal operation. It identifies a unit of a given type (among \"rule\"|\"record\"|\"action\") to be removed by its unique id."
-record RemoveRulesetUnit with type(literal), unitId(literal)
-
-@"A replace-record operation. It provides the new full RecordDef whose id is the id of the target record to be replaced."
-record ReplaceRecordDef with newUnit(record RecordDef)
-
-@"A replace-rule operation. It provides the new full RuleDef whose id is the id of the target rule to be replaced."
-record ReplaceRuleDef with newUnit(record RuleDef)
-
-@"A replace-action operation. It provides the new full ActionDef whose id is the id of the target action to be replaced."
-record ReplaceActionDef with newUnit(record ActionDef)
-
 @"A compact description of a single ruleset unit, containing its unique id, its unit type (\"record\"|\"rule\"|\"action\"), and its natural language annotation."
 record UnitSummary with
   id(literal), unitType(literal), annotation(literal)
@@ -52,13 +31,6 @@ given:
   arrayLayers: ref(literal) "the number of array layers for {$for.typeDesc}, for example, 0 for `literal`, \"an array of strings\" should be 1, and \"an array of string arrays\" is also allowed, having layer 2."
 must be: ref(TypeSpec) "the fully assembled type id string, composed of {$given.baseId}, having {$given.arrayLayers} layers of array represented by appending that number of suffixes '[]'"
 
-@"A rule definition. Contains an id, an annotation, its formal parameters (for-block), local bindings (given-block), and the final value expression (must-be)."
-record RuleDef with
-  id(literal), annotation(literal),
-  forParams(record Tuple<literal, record TypeSpec>[]),
-  givenBindings(record Tuple<literal, record ValueExpr>[]),  
-  mustBe(record ValueExpr)
-
 @"A value expression appearing in a rule, represented as a literal field whose value is a string in the ValueExpr DSL."
 +"\nThe DSL is a line‑based format. Each line is one of:"
 +"\n  - `var <name> [.<field> ...]`: variable reference with optional field path."
@@ -72,6 +44,33 @@ record RuleDef with
 +"\nAll expressions that appear as arguments inside another expression are themselves represented as DSL strings."
 record ValueExpr with dslText(literal)
 
+@"Extract the unique identifier (name) of the unit being defined from its natural-language description."
+rule interpret-def-subject for description(literal)
+must be:
+  ref(literal) "the extracted definition id from the description: {$for.description}"
+
+@"Canonicalize a raw annotation into a standardized annotation string for a given subject type, id, and optional structural details."
+rule canonicalize-annotation for rawAnnot(literal), subjectType(literal), subjectId(literal), details(literal)
+must be:
+  ref(literal) "the canonicalized annotation text for: {$for.rawAnnot}, {$for.subjectType}, {$for.subjectId}, {$for.details}"
+
+@"Extract the list of field names and their natural-language type descriptions from a record description."
+rule interpret-fields for recordDescription(literal)
+must be:
+  ref(record Tuple<literal, literal>[]) "an array of (fieldName, typeDescription) pairs parsed from the record description: {$for.recordDescription}"
+
+@"Interpret a natural-language phrase that describes a single value expression into a ValueExpr."
+rule interpret-value-expr for phrase(literal)
+must be:
+  ref(record ValueExpr) "the ValueExpr that corresponds to the phrase: {$for.phrase}"
+
+@"A rule definition. Contains an id, an annotation, its formal parameters (for-block), local bindings (given-block), and the final value expression (must-be)."
+record RuleDef with
+  id(literal), annotation(literal),
+  forParams(record Tuple<literal, record TypeSpec>[]),
+  givenBindings(record Tuple<literal, record ValueExpr>[]),  
+  mustBe(record ValueExpr)
+
 @"Interprets a natural-language text that describes exactly one rule definition into a RuleDef."
 +"\nIt must be declarative and interprative: it states what will be interpreted to what a standardized form, not the procedure to execute something."
 +"\nIt should describe a subject to be interpreted, which may be parametrized among a whole subject type, then steps of intermediate interpretations/actions/record constructions. They should finally build to a standardized instance, which is \"what this subject will be interpreted to\"."
@@ -79,7 +78,7 @@ record ValueExpr with dslText(literal)
 +"\nThe description shouldn't define new record shapes/actions inline. If also shouldn't just be a trivial extraction like output merely copies an input field; The interpretation must add structural/domain constraints, etc."
 rule interpret-rule-def for rawText(literal)
 given:
-  ruleId: satisfying identify-def-subject where description = $for.rawText
+  ruleId: satisfying interpret-def-subject where description = $for.rawText
   rawAnnotation:
     ref(literal) "the natural language annotation for this rule, describing the subject contract, taken from: {$for.rawText}"
   annotation: satisfying canonicalize-annotation where
@@ -149,7 +148,7 @@ record ActionDef with
 +"\nIt shouldn't describe a record shape or a behavioural rule, nor do rule‑specific interpretations."
 rule interpret-action-def for rawText(literal)
 given:
-  actionName: satisfying identify-def-subject where description = $for.rawText
+  actionName: satisfying interpret-def-subject where description = $for.rawText
   rawAnnotation: ref(literal) "the natural language annotation for the action, taken from: {$for.rawText}"
   annotation: satisfying canonicalize-annotation where
     rawAnnot = $given.rawAnnotation, subjectType = "action", subjectId = $given.actionName, details = ""
@@ -173,6 +172,27 @@ must be:
     params = $given.typedParams,
     outputType = $given.outputType,
     luaScript = $given.luaScript
+
+@"An add-record operation. It contains the complete RecordDef to be added to the ruleset."
+record AddRecordDef with unit(record RecordDef)
+
+@"An add-rule operation. It contains the complete RuleDef to be added to the ruleset."
+record AddRuleDef with unit(record RuleDef)
+
+@"An add-action operation. It contains the complete ActionDef to be added to the ruleset."
+record AddAction with unit(record ActionDef)
+
+@"A removal operation. It identifies a unit of a given type (among \"rule\"|\"record\"|\"action\") to be removed by its unique id."
+record RemoveRulesetUnit with type(literal), unitId(literal)
+
+@"A replace-record operation. It provides the new full RecordDef whose id is the id of the target record to be replaced."
+record ReplaceRecordDef with newUnit(record RecordDef)
+
+@"A replace-rule operation. It provides the new full RuleDef whose id is the id of the target rule to be replaced."
+record ReplaceRuleDef with newUnit(record RuleDef)
+
+@"A replace-action operation. It provides the new full ActionDef whose id is the id of the target action to be replaced."
+record ReplaceActionDef with newUnit(record ActionDef)
 
 @"Describe a section in the ruleset, containing the full definitions or records/rules/actions, respectively."
 record RulesetSection with

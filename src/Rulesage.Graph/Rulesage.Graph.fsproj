@@ -6,8 +6,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Services\Abstractions\ISimilarityService.fs" />
-        <Compile Include="Services\Implementations\SimilarityService.fs" />
+        <Compile Include="Services\Abstractions\IStructureBuilder.fs" />
+        <Compile Include="Services\Implementations\StructureBuilder.fs" />
         <Compile Include="IGraphBuilder.fs" />
         <Compile Include="GraphBuilder.fs" />
         <Compile Include="Extensions\DependencyInjectionExtensions.fs" />
