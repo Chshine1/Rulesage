@@ -28,5 +28,9 @@ type IGraphBuilder =
 
     abstract member CombineGraphs: raw: RulesageGraph -> UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>>
 
+    abstract member PropagateLabels:
+        graph: UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>> * seeds: Map<NodeId, string> ->
+            Map<NodeId, string option>
+
     abstract member ToDotAsync:
         rules: RuleExpr seq * records: RecordExpr seq * actions: ActionExpr seq -> Task<string * string>
