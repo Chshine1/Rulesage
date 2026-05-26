@@ -1,11 +1,8 @@
 ﻿namespace Rulesage.Graph
 
-open System.Collections.Concurrent
-open System.Collections.Generic
 open System.Threading.Tasks
 open Microsoft.Extensions.Options
 open QuikGraph
-open QuikGraph.Algorithms.Search
 open QuikGraph.Graphviz
 open QuikGraph.Graphviz.Dot
 open Rulesage.Common.Grammar.Ast
@@ -18,30 +15,11 @@ type GraphBuilder
         structureBuilder: IStructureBuilder,
         descriptionCleaner: IDescriptionCleaner,
         semanticGraphBuilder: ISemanticGraphBuilder,
+        graphFuser: IGraphFuser,
+        lablePropagator: ILabelPropagator,
         config: IOptions<GraphConfig>
     ) =
     let _config = config.Value
-
-    let bfsDistances (graph: UndirectedBidirectionalGraph<NodeId, Edge<NodeId>>) (root: NodeId) =
-        let bfs = UndirectedBreadthFirstSearchAlgorithm(graph)
-
-        let distances = Dictionary<NodeId, int>()
-        distances[root] <- 0
-
-        bfs.add_ExamineEdge (fun edge ->
-            let u = edge.Source
-            let v = edge.Target
-
-            if not (distances.ContainsKey(v)) then
-                distances[v] <- distances[u] + 1
-            elif not (distances.ContainsKey(u)) then
-                distances[u] <- distances[v] + 1
-        )
-
-        bfs.SetRootVertex(root)
-        bfs.Compute()
-
-        distances
 
     interface IGraphBuilder with
         member _.BuildAsync
@@ -71,89 +49,13 @@ type GraphBuilder
                     }
             }
 
-        member this.CombineGraphs(raw) =
-            let undirectedTopo = UndirectedBidirectionalGraph(raw.StructuralLayer)
-
-            let nodesInSemantic =
-                raw.SemanticLayer.Edges
-                |> Seq.collect (fun e -> [ e.Source; e.Target ])
-                |> Seq.distinct
-                |> Array.ofSeq
-
-            let distCache = ConcurrentDictionary<NodeId, IDictionary<NodeId, int>>()
-
-            nodesInSemantic
-            |> Array.Parallel.iter (fun node ->
-                if not (distCache.ContainsKey(node)) then
-                    distCache.TryAdd(node, bfsDistances undirectedTopo node) |> ignore
-            )
-
-            let computeG (u: NodeId) (v: NodeId) =
-                match distCache.TryGetValue(u) with
-                | true, distsFromU ->
-                    match distsFromU.TryGetValue(v) with
-                    | true, dist -> max _config.GMin (_config.Alpha ** float (dist - 1))
-                    | false, _ -> _config.GMin
-                | false, _ -> _config.GMin
-
-            let fusedGraph = UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>>()
-            raw.SemanticLayer.Vertices |> Seq.iter (fusedGraph.AddVertex >> ignore)
-
-            for edge in raw.SemanticLayer.Edges do
-                let newWeight = edge.Tag * computeG edge.Source edge.Target
-
-                fusedGraph.AddEdge(TaggedUndirectedEdge(edge.Source, edge.Target, newWeight))
-                |> ignore
-
-            fusedGraph
+        member _.CombineGraphs(raw) =
+            graphFuser.Fuse raw.StructuralLayer raw.SemanticLayer
 
         member this.PropagateLabels
             (graph: UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>>, seeds: Map<NodeId, string>)
             : Map<NodeId, string option> =
-
-            let allNodes = graph.Vertices |> Seq.toArray
-            let labels = Dictionary<NodeId, string option>()
-
-            for node in allNodes do
-                labels[node] <- seeds.TryFind node
-
-            let mutable changed = true
-            let mutable iter = 0
-
-            while changed && iter < _config.PropergateMaxIter do
-                changed <- false
-                iter <- iter + 1
-
-                for node in allNodes do
-                    if not (seeds.ContainsKey node) then
-                        let scores = Dictionary<string, float>()
-
-                        for edge in graph.AdjacentEdges(node) do
-                            let neighbor =
-                                if edge.Source.Equals(node) then
-                                    edge.Target
-                                else
-                                    edge.Source
-
-                            let weight = edge.Tag
-
-                            match labels.TryGetValue neighbor with
-                            | true, Some lbl ->
-                                match scores.TryGetValue lbl with
-                                | true, s -> scores[lbl] <- s + weight
-                                | false, _ -> scores[lbl] <- weight
-                            | _ -> ()
-
-                        if scores.Count > 0 then
-                            let bestLabel = scores |> Seq.maxBy _.Value |> _.Key
-
-                            match labels[node] with
-                            | Some current when current = bestLabel -> ()
-                            | _ ->
-                                labels[node] <- Some bestLabel
-                                changed <- true
-
-            labels |> Seq.map (fun kvp -> kvp.Key, kvp.Value) |> Map.ofSeq
+            lablePropagator.Propagate graph seeds
 
         member this.ToDotAsync(rules, records, actions) =
             task {

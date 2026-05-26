@@ -16,7 +16,9 @@ type ServiceCollectionExtensions =
             .AddScoped<IStructureBuilder, StructureBuilder>()
             .AddScoped<IDescriptionCleaner, DescriptionCleaner>()
             .AddScoped<ISemanticGraphBuilder, SemanticGraphBuilder>()
+            .AddScoped<IGraphFuser, GraphFuser>()
             .AddScoped<IGraphBuilder, GraphBuilder>()
+            .AddScoped<ILabelPropagator, LabelPropagator>()
         |> ignore
 
         services

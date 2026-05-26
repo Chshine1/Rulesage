@@ -10,7 +10,7 @@ type SemanticGraphBuilder(config: IOptions<GraphConfig>) =
     let _config = config.Value
 
     interface ISemanticGraphBuilder with
-        member this.Build nodeIds embeddings =
+        member _.Build nodeIds embeddings =
             let semanticGraph = UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>>()
             semanticGraph.AddVertexRange nodeIds |> ignore
 
