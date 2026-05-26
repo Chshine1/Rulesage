@@ -9,10 +9,10 @@ open QuikGraph.Graphviz
 open QuikGraph.Graphviz.Dot
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
-open Rulesage.Graph.Services.Abstractions
+open Rulesage.Shared.Services.Abstractions
 
 [<CLIMutable>]
-type GraphConfig = { R: int; SimThreshold: float }
+type GraphConfig = { R: int; SimThreshold: float; TfIdfThreshold: float }
 
 type DependencyItem =
     | Record of id: Identifier
@@ -20,7 +20,7 @@ type DependencyItem =
     | Action of id: Identifier
     | Ref of expr: RefExpr
 
-type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>) =
+type GraphBuilder(embeddingService: IEmbeddingService, config: IOptions<GraphConfig>) =
     let _config = config.Value
 
     let getRecordDepsToType (t: TypeExpr) : DependencyItem list =
@@ -163,14 +163,82 @@ type GraphBuilder(simService: ISimilarityService, config: IOptions<GraphConfig>)
 
                 let nodeIds = nodesMap |> Map.keys |> Seq.toArray
                 let n = nodeIds.Length
+                
+                let tokenizedDocs =
+                    nodeIds
+                    |> Array.map (fun id ->
+                        nodesMap[id].Description.Split(
+                            [|' '; '\n'; '\t'; '.'; ','; '"'; '('; ')'|],
+                            StringSplitOptions.RemoveEmptyEntries
+                        )
+                    )
+
+                let df =
+                    tokenizedDocs
+                    |> Seq.collect (fun words -> words |> Set.ofArray)
+                    |> Seq.groupBy id
+                    |> Seq.map (fun (word, occurrences) -> word, float (Seq.length occurrences))
+                    |> Map.ofSeq
+
+                printfn $"[DEBUG] Number of total documents: %d{n}"
+                printfn $"[DEBUG] Number of distinct words: %d{df.Count}"
+
+                let idf word =
+                    match Map.tryFind word df with
+                    | Some dfValue -> Math.Log((float n + 1.0) / (dfValue + 1.0))
+                    | _ -> 0.0
+
+                let cleanedDescriptions =
+                    tokenizedDocs
+                    |> Array.map (fun words ->
+                        let tfMap =
+                            words
+                            |> Array.groupBy id
+                            |> Array.map (fun (w, arr) -> w, 1.0 + log(float arr.Length))
+                            |> Map.ofArray
+
+                        printfn $"\n[DEBUG] Original document words count=%d{words.Length}"
+                        printfn "  Original document: %s" (String.concat " " words)
+                        
+                        let k = max 5 (int(_config.TfIdfThreshold * float words.Length))
+                        let dWords = words |> Array.distinct
+                        
+                        let topWords =
+                            dWords
+                            |> Array.map (fun w ->
+                                let tf = tfMap |> Map.tryFind w |> Option.defaultValue 0.0
+                                let idfVal = idf w
+                                let tfidf = tf * idfVal
+
+                                printfn $"    [Word: %-20s{w}] TF=%.2f{tf}, IDF=%.4f{idfVal}, TF-IDF=%.4f{tfidf}"
+                                w, tfidf
+                            )
+                            |> Array.sortByDescending snd
+                            |> Array.take (min k dWords.Length)
+                            |> Array.map fst
+                            
+                        let cleaned =
+                            words 
+                            |> Array.filter (fun w -> Set.contains w (topWords |> Set.ofArray))
+                            |> String.concat " "
+                            
+                        printfn $"  Cleaned: %s{cleaned}"
+                        cleaned
+                    )
+                
+                let embeddings = embeddingService.GetBatchEmbeddings(cleanedDescriptions)
 
                 let distanceMatrix = Array2D.create n n 0.0
+                
+                let dotProduct (a: float32[]) (b: float32[]) =
+                    let mutable sum = 0.0f
+                    for k in 0 .. a.Length-1 do
+                        sum <- sum + a[k] * b[k]
+                    sum
 
                 for i in 0 .. n - 1 do
                     for j in i + 1 .. n - 1 do
-                        let desc1 = nodesMap[nodeIds[i]].Description
-                        let desc2 = nodesMap[nodeIds[j]].Description
-                        let! sim = simService.ComputeSimilarityAsync desc1 desc2
+                        let sim = dotProduct embeddings[i] embeddings[j]
                         let dsim = sim |> Convert.ToDouble
                         distanceMatrix[i, j] <- 1.0 - dsim
                         distanceMatrix[j, i] <- 1.0 - dsim
