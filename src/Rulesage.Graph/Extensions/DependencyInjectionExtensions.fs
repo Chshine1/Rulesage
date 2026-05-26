@@ -19,6 +19,7 @@ type ServiceCollectionExtensions =
             .AddScoped<IGraphFuser, GraphFuser>()
             .AddScoped<IGraphBuilder, GraphBuilder>()
             .AddScoped<ILabelPropagator, LabelPropagator>()
+            .AddScoped<IGraphDotExporter, GraphDotExporter>()
         |> ignore
 
         services

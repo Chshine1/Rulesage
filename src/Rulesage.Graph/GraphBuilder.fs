@@ -1,10 +1,7 @@
 ﻿namespace Rulesage.Graph
 
 open System.Threading.Tasks
-open Microsoft.Extensions.Options
 open QuikGraph
-open QuikGraph.Graphviz
-open QuikGraph.Graphviz.Dot
 open Rulesage.Common.Grammar.Ast
 open Rulesage.Graph.Services.Abstractions
 open Rulesage.Shared.Services.Abstractions
@@ -17,9 +14,8 @@ type GraphBuilder
         semanticGraphBuilder: ISemanticGraphBuilder,
         graphFuser: IGraphFuser,
         lablePropagator: ILabelPropagator,
-        config: IOptions<GraphConfig>
+        dotExporter: IGraphDotExporter
     ) =
-    let _config = config.Value
 
     interface IGraphBuilder with
         member _.BuildAsync
@@ -60,39 +56,8 @@ type GraphBuilder
         member this.ToDotAsync(rules, records, actions) =
             task {
                 let! graph = (this :> IGraphBuilder).BuildAsync(rules, records, actions)
-                let structural = GraphvizAlgorithm<NodeId, Edge<NodeId>>(graph.StructuralLayer)
-                structural.CommonVertexFormat.Style <- GraphvizVertexStyle.Filled
-                structural.CommonVertexFormat.FillColor <- GraphvizColor(255uy, 255uy, 150uy, 255uy)
 
-                structural.FormatVertex.Add(fun args ->
-                    match args.Vertex with
-                    | NodeId.Record _ -> args.VertexFormat.Shape <- GraphvizVertexShape.InvTrapezium
-                    | NodeId.Rule _ -> args.VertexFormat.Shape <- GraphvizVertexShape.MSquare
-                    | NodeId.Action _ -> args.VertexFormat.Shape <- GraphvizVertexShape.Diamond
-                    | NodeId.Ref _ ->
-                        args.VertexFormat.Style <- GraphvizVertexStyle.Dashed
-                        args.VertexFormat.Shape <- GraphvizVertexShape.Circle
-                )
-
-                structural.FormatEdge.Add(fun args -> args.EdgeFormat.StrokeColor <- GraphvizColor.Black)
-
-                let semantic =
-                    GraphvizAlgorithm<NodeId, TaggedUndirectedEdge<NodeId, float>>(graph.SemanticLayer)
-
-                semantic.CommonVertexFormat.Style <- GraphvizVertexStyle.Filled
-                semantic.CommonVertexFormat.FillColor <- GraphvizColor(255uy, 255uy, 150uy, 255uy)
-
-                semantic.FormatVertex.Add(fun args ->
-                    match args.Vertex with
-                    | NodeId.Record _ -> args.VertexFormat.Shape <- GraphvizVertexShape.InvTrapezium
-                    | NodeId.Rule _ -> args.VertexFormat.Shape <- GraphvizVertexShape.MSquare
-                    | NodeId.Action _ -> args.VertexFormat.Shape <- GraphvizVertexShape.Diamond
-                    | NodeId.Ref _ ->
-                        args.VertexFormat.Style <- GraphvizVertexStyle.Dashed
-                        args.VertexFormat.Shape <- GraphvizVertexShape.Circle
-                )
-
-                semantic.FormatEdge.Add(fun args -> args.EdgeFormat.StrokeColor <- GraphvizColor.Black)
-
-                return structural.Generate(), semantic.Generate()
+                return
+                    dotExporter.ExportDirectional graph.StructuralLayer,
+                    dotExporter.ExportUndirectional graph.SemanticLayer
             }

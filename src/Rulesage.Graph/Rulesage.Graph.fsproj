@@ -12,11 +12,13 @@
         <Compile Include="Services\Abstractions\ISemanticGraphBuilder.fs" />
         <Compile Include="Services\Abstractions\IGraphFuser.fs" />
         <Compile Include="Services\Abstractions\ILabelProagator.fs" />
+        <Compile Include="Services\Abstractions\IGraphDotExporter.fs" />
         <Compile Include="Services\Implementations\StructureBuilder.fs" />
         <Compile Include="Services\Implementations\DescriptionCleaner.fs" />
         <Compile Include="Services\Implementations\SemanticGraphBuilder.fs" />
         <Compile Include="Services\Implementations\GraphFuser.fs" />
         <Compile Include="Services\Implementations\LabelPropagator.fs" />
+        <Compile Include="Services\Implementations\GraphDotExporter.fs" />
         <Compile Include="IGraphBuilder.fs" />
         <Compile Include="GraphBuilder.fs" />
         <Compile Include="Extensions\DependencyInjectionExtensions.fs" />
