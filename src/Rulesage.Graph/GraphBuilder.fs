@@ -1,10 +1,12 @@
 ﻿namespace Rulesage.Graph
 
 open System
+open System.Collections.Concurrent
 open System.Collections.Generic
 open System.Threading.Tasks
 open Microsoft.Extensions.Options
 open QuikGraph
+open QuikGraph.Algorithms.Search
 open QuikGraph.Graphviz
 open QuikGraph.Graphviz.Dot
 open Rulesage.Common.Grammar
@@ -12,7 +14,14 @@ open Rulesage.Common.Grammar.Ast
 open Rulesage.Shared.Services.Abstractions
 
 [<CLIMutable>]
-type GraphConfig = { R: int; SimThreshold: float; TfIdfThreshold: float }
+type GraphConfig =
+    {
+        R: int
+        SimThreshold: float
+        TfIdfThreshold: float
+        GMin: float
+        Alpha: float
+    }
 
 type DependencyItem =
     | Record of id: Identifier
@@ -22,6 +31,27 @@ type DependencyItem =
 
 type GraphBuilder(embeddingService: IEmbeddingService, config: IOptions<GraphConfig>) =
     let _config = config.Value
+
+    let bfsDistances (graph: UndirectedBidirectionalGraph<NodeId, Edge<NodeId>>) (root: NodeId) =
+        let bfs = UndirectedBreadthFirstSearchAlgorithm(graph)
+
+        let distances = Dictionary<NodeId, int>()
+        distances[root] <- 0
+
+        bfs.add_ExamineEdge (fun edge ->
+            let u = edge.Source
+            let v = edge.Target
+
+            if not (distances.ContainsKey(v)) then
+                distances[v] <- distances[u] + 1
+            elif not (distances.ContainsKey(u)) then
+                distances[u] <- distances[v] + 1
+        )
+
+        bfs.SetRootVertex(root)
+        bfs.Compute()
+
+        distances
 
     let getRecordDepsToType (t: TypeExpr) : DependencyItem list =
         match t.Atomic with
@@ -95,7 +125,7 @@ type GraphBuilder(embeddingService: IEmbeddingService, config: IOptions<GraphCon
             (rules: RuleExpr seq, records: RecordExpr seq, actions: ActionExpr seq)
             : Task<RulesageGraph> =
             task {
-                let structuralGraph = BidirectionalGraph<NodeId, StructuralEdge>()
+                let structuralGraph = BidirectionalGraph<NodeId, Edge<NodeId>>()
                 let semanticGraph = UndirectedGraph<NodeId, SemanticEdge>()
 
                 let mutable nodesMap = Map.empty<NodeId, GraphNode>
@@ -163,14 +193,15 @@ type GraphBuilder(embeddingService: IEmbeddingService, config: IOptions<GraphCon
 
                 let nodeIds = nodesMap |> Map.keys |> Seq.toArray
                 let n = nodeIds.Length
-                
+
                 let tokenizedDocs =
                     nodeIds
                     |> Array.map (fun id ->
-                        nodesMap[id].Description.Split(
-                            [|' '; '\n'; '\t'; '.'; ','; '"'; '('; ')'|],
-                            StringSplitOptions.RemoveEmptyEntries
-                        )
+                        nodesMap[id]
+                            .Description.Split(
+                                [| ' '; '\n'; '\t'; '.'; ','; '"'; '('; ')' |],
+                                StringSplitOptions.RemoveEmptyEntries
+                            )
                     )
 
                 let df =
@@ -194,15 +225,15 @@ type GraphBuilder(embeddingService: IEmbeddingService, config: IOptions<GraphCon
                         let tfMap =
                             words
                             |> Array.groupBy id
-                            |> Array.map (fun (w, arr) -> w, 1.0 + log(float arr.Length))
+                            |> Array.map (fun (w, arr) -> w, 1.0 + log (float arr.Length))
                             |> Map.ofArray
 
                         printfn $"\n[DEBUG] Original document words count=%d{words.Length}"
                         printfn "  Original document: %s" (String.concat " " words)
-                        
-                        let k = max 5 (int(_config.TfIdfThreshold * float words.Length))
+
+                        let k = max 5 (int (_config.TfIdfThreshold * float words.Length))
                         let dWords = words |> Array.distinct
-                        
+
                         let topWords =
                             dWords
                             |> Array.map (fun w ->
@@ -216,24 +247,26 @@ type GraphBuilder(embeddingService: IEmbeddingService, config: IOptions<GraphCon
                             |> Array.sortByDescending snd
                             |> Array.take (min k dWords.Length)
                             |> Array.map fst
-                            
+
                         let cleaned =
-                            words 
+                            words
                             |> Array.filter (fun w -> Set.contains w (topWords |> Set.ofArray))
                             |> String.concat " "
-                            
+
                         printfn $"  Cleaned: %s{cleaned}"
                         cleaned
                     )
-                
+
                 let embeddings = embeddingService.GetBatchEmbeddings(cleanedDescriptions)
 
                 let distanceMatrix = Array2D.create n n 0.0
-                
+
                 let dotProduct (a: float32[]) (b: float32[]) =
                     let mutable sum = 0.0f
-                    for k in 0 .. a.Length-1 do
+
+                    for k in 0 .. a.Length - 1 do
                         sum <- sum + a[k] * b[k]
+
                     sum
 
                 for i in 0 .. n - 1 do
@@ -249,10 +282,7 @@ type GraphBuilder(embeddingService: IEmbeddingService, config: IOptions<GraphCon
                         (fun i ->
                             let dists = Array.init n (fun j -> distanceMatrix[i, j])
 
-                            dists
-                            |> Array.sort
-                            |> Array.tryItem (_config.R - 1)
-                            |> Option.defaultValue 0.0
+                            dists |> Array.sort |> Array.tryItem (_config.R - 1) |> Option.defaultValue 0.0
                         )
 
                 for i in 0 .. n - 1 do
@@ -271,6 +301,42 @@ type GraphBuilder(embeddingService: IEmbeddingService, config: IOptions<GraphCon
                         SemanticLayer = semanticGraph
                     }
             }
+
+        member this.CombineGraphs(raw) =
+            let undirectedTopo = UndirectedBidirectionalGraph(raw.StructuralLayer)
+
+            let nodesInSemantic =
+                raw.SemanticLayer.Edges
+                |> Seq.collect (fun e -> [ e.Source; e.Target ])
+                |> Seq.distinct
+                |> Array.ofSeq
+
+            let distCache = ConcurrentDictionary<NodeId, IDictionary<NodeId, int>>()
+
+            nodesInSemantic
+            |> Array.Parallel.iter (fun node ->
+                if not (distCache.ContainsKey(node)) then
+                    distCache.TryAdd(node, bfsDistances undirectedTopo node) |> ignore
+            )
+
+            let computeG (u: NodeId) (v: NodeId) =
+                match distCache.TryGetValue(u) with
+                | true, distsFromU ->
+                    match distsFromU.TryGetValue(v) with
+                    | true, dist -> max _config.GMin (_config.Alpha ** float (dist - 1))
+                    | false, _ -> _config.GMin
+                | false, _ -> _config.GMin
+
+            let fusedGraph = UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>>()
+            raw.SemanticLayer.Vertices |> Seq.iter (fusedGraph.AddVertex >> ignore)
+
+            for edge in raw.SemanticLayer.Edges do
+                let newWeight = edge.Tag * computeG edge.Source edge.Target
+
+                fusedGraph.AddEdge(TaggedUndirectedEdge(edge.Source, edge.Target, newWeight))
+                |> ignore
+
+            fusedGraph
 
         member this.ToDotAsync(rules, records, actions) =
             task {

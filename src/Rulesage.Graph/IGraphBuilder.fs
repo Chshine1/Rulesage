@@ -13,8 +13,6 @@ type NodeId =
 
 type GraphNode = { Id: NodeId; Description: string }
 
-type StructuralEdge = Edge<NodeId>
-
 type SemanticEdge = TaggedUndirectedEdge<NodeId, float>
 
 type RulesageGraph =
@@ -27,6 +25,8 @@ type RulesageGraph =
 type IGraphBuilder =
     abstract member BuildAsync:
         rules: RuleExpr seq * records: RecordExpr seq * actions: ActionExpr seq -> Task<RulesageGraph>
+
+    abstract member CombineGraphs: raw: RulesageGraph -> UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>>
 
     abstract member ToDotAsync:
         rules: RuleExpr seq * records: RecordExpr seq * actions: ActionExpr seq -> Task<string * string>
