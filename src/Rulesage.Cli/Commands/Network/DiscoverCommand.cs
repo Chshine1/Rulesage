@@ -6,9 +6,9 @@ namespace Rulesage.Cli.Commands.Network;
 
 public static partial class NetworkCommands
 {
-    public static Command CreateVisualizeCommand(IServiceProvider serviceProvider)
+    public static Command CreateDiscoverCommand(IServiceProvider serviceProvider)
     {
-        var cmd = new Command("visualize", "Search nodes by text or semantics")
+        var cmd = new Command("discover", "Search nodes by text or semantics")
         {
             new Option<FileInfo>("--input")
             {
@@ -17,6 +17,12 @@ public static partial class NetworkCommands
             new Option<DirectoryInfo>("--output")
             {
                 Required = true
+            },
+            new Option<List<string>>("--label")
+            {
+                Required = false,
+                AllowMultipleArgumentsPerToken = true,
+                DefaultValueFactory = _ => []
             }
         };
 
@@ -24,9 +30,16 @@ public static partial class NetworkCommands
         {
             using var scope = serviceProvider.CreateScope();
             var handler = scope.ServiceProvider.GetRequiredService<NetworkHandler>();
-            await handler.GenerateDotAsync(
+            var rawLabels = result.GetRequiredValue<List<string>>("--label");
+            var labels = rawLabels.Select(rs =>
+            {
+                var split = rs.Split(':');
+                return (split[0], split[1]);
+            }).ToDictionary();
+            await handler.DiscoverCommunitiesAsync(
                 result.GetRequiredValue<FileInfo>("--input").FullName,
                 result.GetRequiredValue<DirectoryInfo>("--output").FullName,
+                labels,
                 cancellationToken);
         });
 

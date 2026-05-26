@@ -48,6 +48,7 @@ public class Program
         
         var networkCommand = new Command("network");
         networkCommand.Subcommands.Add(NetworkCommands.CreateVisualizeCommand(host.Services));
+        networkCommand.Subcommands.Add(NetworkCommands.CreateDiscoverCommand(host.Services));
 
         var operationCommand = new Command("rules");
         operationCommand.Subcommands.Add(RuleCommands.CreateSearchCommand(host.Services));

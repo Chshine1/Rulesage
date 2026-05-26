@@ -1,7 +1,6 @@
 ﻿namespace Rulesage.Graph
 
 open System.Threading.Tasks
-open QuikGraph
 open Rulesage.Common.Grammar.Ast
 open Rulesage.Graph.Services.Abstractions
 open Rulesage.Shared.Services.Abstractions
@@ -11,10 +10,7 @@ type GraphBuilder
         embeddingService: IEmbeddingService,
         structureBuilder: IStructureBuilder,
         descriptionCleaner: IDescriptionCleaner,
-        semanticGraphBuilder: ISemanticGraphBuilder,
-        graphFuser: IGraphFuser,
-        lablePropagator: ILabelPropagator,
-        dotExporter: IGraphDotExporter
+        semanticGraphBuilder: ISemanticGraphBuilder
     ) =
 
     interface IGraphBuilder with
@@ -30,7 +26,7 @@ type GraphBuilder
                 let descriptions =
                     seq {
                         for i in 1..n do
-                            yield (nodesMap |> Map.find nodeIds[i]).Description
+                            yield (nodesMap |> Map.find nodeIds[i - 1]).Description
                     }
 
                 let cleanedDescriptions = descriptionCleaner.Clean n descriptions
@@ -43,21 +39,4 @@ type GraphBuilder
                         StructuralLayer = structuralGraph
                         SemanticLayer = semanticGraph
                     }
-            }
-
-        member _.CombineGraphs(raw) =
-            graphFuser.Fuse raw.StructuralLayer raw.SemanticLayer
-
-        member this.PropagateLabels
-            (graph: UndirectedGraph<NodeId, TaggedUndirectedEdge<NodeId, float>>, seeds: Map<NodeId, string>)
-            : Map<NodeId, string option> =
-            lablePropagator.Propagate graph seeds
-
-        member this.ToDotAsync(rules, records, actions) =
-            task {
-                let! graph = (this :> IGraphBuilder).BuildAsync(rules, records, actions)
-
-                return
-                    dotExporter.ExportDirectional graph.StructuralLayer,
-                    dotExporter.ExportUndirectional graph.SemanticLayer
             }
