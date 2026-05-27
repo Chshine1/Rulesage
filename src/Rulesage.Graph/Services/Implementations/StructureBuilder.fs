@@ -23,6 +23,13 @@ type StructureBuilder() =
 
                 structuralGraph.AddVertex(id) |> ignore
 
+            let rec addTypeExprDeps sourceId typeExpr =
+                match typeExpr.Atomic with
+                | AtomicType.Record(rid, gs) ->
+                    structuralGraph.AddEdge(Edge(NodeId.Record rid, sourceId)) |> ignore
+                    gs |> Seq.iter (addTypeExprDeps sourceId)
+                | _ -> ()
+
             let rec addRefDeps source p =
                 match p with
                 | PrimitiveExpr.Ref r ->
@@ -39,12 +46,8 @@ type StructureBuilder() =
                          |> String.concat "")
 
                     structuralGraph.AddEdge(Edge(id, source)) |> ignore
+                    addTypeExprDeps id r.ExpctedType
                 | PrimitiveExpr.Array arr -> arr |> Seq.iter (addRefDeps source)
-                | _ -> ()
-
-            let addTypeExprDeps sourceId typeExpr =
-                match typeExpr.Atomic with
-                | AtomicType.Record(rid, _) -> structuralGraph.AddEdge(Edge(NodeId.Record rid, sourceId)) |> ignore
                 | _ -> ()
 
             let addRuleDeps (rule: RuleExpr) =
