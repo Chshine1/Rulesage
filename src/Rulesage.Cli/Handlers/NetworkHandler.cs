@@ -5,7 +5,7 @@ using Rulesage.Graph.Services.Abstractions;
 
 namespace Rulesage.Cli.Handlers;
 
-public class NetworkHandler(IGraphBuilder graphBuilder, IGraphDotExporter graphDotExporter, IGraphFuser graphFuser, ILabelPropagator labelPropagator)
+public class NetworkHandler(IGraphBuilder graphBuilder, IGraphDotExporter graphDotExporter, IGraphFuser graphFuser, ILabelPropagator labelPropagator, IModularityService modularityService)
 {
     public async Task GenerateDotAsync(string documentPath, string outputPath, CancellationToken cancellationToken = default)
     {
@@ -33,5 +33,8 @@ public class NetworkHandler(IGraphBuilder graphBuilder, IGraphDotExporter graphD
         var propagatedDot = graphDotExporter.ExportUndirectionalWithCommunities(fused, propagated);
         var structuralPath = Path.Combine(outputPath, "propagated-dot.txt");
         await File.WriteAllTextAsync(structuralPath, propagatedDot, cancellationToken);
+
+        var modularity = modularityService.Compute(fused, propagated);
+        Console.WriteLine($"Modularity: {modularity:F4}");
     }
 }

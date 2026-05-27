@@ -20,6 +20,7 @@ type ServiceCollectionExtensions =
             .AddScoped<IGraphBuilder, GraphBuilder>()
             .AddScoped<ILabelPropagator, LabelPropagator>()
             .AddScoped<IGraphDotExporter, GraphDotExporter>()
+            .AddScoped<IModularityService, ModularityService>()
         |> ignore
 
         services
