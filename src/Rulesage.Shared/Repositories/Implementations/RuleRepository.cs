@@ -45,7 +45,7 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         
         var mustBe = JsonSerializer.Deserialize<ValueExpr>(mustBeJson, jsonOptions);
 
-        return new RuleExpr(annotation, id, fors, givens, mustBe);
+        return new RuleExpr(annotation, "", id, fors, givens, mustBe);
     }
 
     public async Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector,
@@ -94,7 +94,7 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
             var mustBe = JsonSerializer.Deserialize<ValueExpr>(mustBeJson, jsonOptions);
 
             return (
-                new RuleExpr(annotation, id, fors, givens, mustBe),
+                new RuleExpr(annotation, "", id, fors, givens, mustBe),
                 (float)r.GetDouble(5)
             );
         });

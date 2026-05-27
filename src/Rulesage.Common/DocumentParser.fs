@@ -4,6 +4,7 @@ open FParsec
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
 open Rulesage.Common.Grammar.Parsers.Domain.Rule
+open Rulesage.Common.Grammar.Parsers.Lexer
 open Rulesage.Common.Grammar.Parsers.Strings
 
 type Document =
@@ -19,14 +20,14 @@ module DocumentParser =
         | RecordDef of RecordExpr
         | ActionDef of ActionExpr
 
-    let private pAstNode =
-        pAnnotation .>> spaces
-        >>= fun annotation ->
+    let private pAstNode: Parser<AstNode> =
+        skipChar '#' >>. pId .>> spaces1 .>>. pAnnotation .>> spaces
+        >>= fun (community, annotation) ->
             choice
                 [
-                    pRule annotation |>> RuleDef
-                    pRecord annotation |>> RecordDef
-                    pAction annotation |>> ActionDef
+                    pRule community annotation |>> RuleDef
+                    pRecord community annotation |>> RecordDef
+                    pAction community annotation |>> ActionDef
                 ]
 
     let private pDocument: Parser<AstNode list> =

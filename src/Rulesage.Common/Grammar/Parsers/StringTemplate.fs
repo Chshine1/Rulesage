@@ -36,7 +36,7 @@ module Strings =
         choice [ pEscaped; pInterpolation; pNormalChar ]
 
     let pSingleLineString: Parser<StringTemplate> =
-        sepBy1 (between (skipChar '\"') (skipChar '\"') (many pStringPart)) (skipChar '+')
+        spacedSep1 '+' (between (skipChar '\"') (skipChar '\"') (many pStringPart))
         |>> Seq.concat
 
     let pAnnotation: Parser<string> =
