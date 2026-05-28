@@ -7,7 +7,7 @@ using Rulesage.Shared.Services.Abstractions;
 namespace Rulesage.Cli.Handlers;
 
 public class NodesHandler(
-    INodeRepository nodeRepository,
+    IRecordRepository recordRepository,
     IEmbeddingService embeddingService,
     JsonSerializerOptions jsonOptions)
 {
@@ -17,7 +17,7 @@ public class NodesHandler(
     {
         var vector = embeddingService.GetEmbedding(query);
         var nodes =
-            await nodeRepository.FindOrderByCosineDistanceAsync(vector, skip, take, cancellationToken);
+            await recordRepository.FindOrderByCosineDistanceAsync(vector, skip, take, cancellationToken);
         switch (format)
         {
             case NodeCommands.NodeFormat.Json:

@@ -8,20 +8,20 @@ using Rulesage.Shared.Repositories.Abstractions;
 
 namespace Rulesage.Shared.Repositories.Implementations;
 
-public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions jsonOptions) : IRuleRepository
+public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions jsonOptions) : IRecordRepository
 {
     public async Task<IEnumerable<string>> GetDocumentsAsync(CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(cancellationToken);
 
-        await using var cmd = new NpgsqlCommand("SELECT annotation FROM rules", conn);
+        await using var cmd = new NpgsqlCommand("SELECT annotation FROM records", conn);
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
         return ReadToEnumerable(reader, r => r.GetString(0));
     }
 
-    public async Task<IEnumerable<RuleExpr>> FindByIdsAsync(IEnumerable<string> ids,
+    public async Task<IEnumerable<RecordExpr>> FindByIdsAsync(IEnumerable<string> ids,
         CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
@@ -34,10 +34,9 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
                     id,
                     community,
                     annotation,
-                    fors,
-                    givens,
-                    must_be
-                FROM rules
+                    generic_params,
+                    fors
+                FROM records
                 WHERE id=ANY($1) 
                 """,
                 conn
@@ -52,31 +51,28 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         var idOrdinal = reader.GetOrdinal("id");
         var communityOrdinal = reader.GetOrdinal("community");
         var annotationOrdinal = reader.GetOrdinal("annotation");
+        var genericParamsOrdinal = reader.GetOrdinal("generic_params");
         var forsOrdinal = reader.GetOrdinal("fors");
-        var givensOrdinal = reader.GetOrdinal("givens");
-        var mustBeOrdinal = reader.GetOrdinal("must_be");
 
         return ReadToEnumerable(reader, r =>
         {
             var id = r.GetString(idOrdinal);
             var community = r.GetString(communityOrdinal);
             var annotation = r.GetString(annotationOrdinal);
+            var genericParamsJson = r.GetString(genericParamsOrdinal);
             var forsJson = r.GetString(forsOrdinal);
-            var givensJson = r.GetString(givensOrdinal);
-            var mustBeJson = r.GetString(mustBeOrdinal);
 
+            var genericParams =
+                JsonSerializer.Deserialize<string[]>(genericParamsJson, jsonOptions);
             var fors =
                 JsonSerializer.Deserialize<FSharpMap<string, ParamExpr>>(forsJson, jsonOptions);
-            var givens =
-                JsonSerializer.Deserialize<FSharpMap<string, GivenExpr>>(givensJson, jsonOptions);
-            var mustBe = JsonSerializer.Deserialize<ValueExpr>(mustBeJson, jsonOptions);
 
-            return new RuleExpr(id, community, annotation, fors, givens, mustBe);
+            return new RecordExpr(id, community, annotation, genericParams, fors);
         });
     }
 
-    public async Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector,
-        int skip, int take,
+    public async Task<IEnumerable<(RecordExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector, int skip,
+        int take,
         CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
@@ -87,12 +83,12 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
                 """
                 SELECT
                     id,
+                    community,
                     annotation,
+                    generic_params,
                     fors,
-                    givens,
-                    must_be,
                     (annotation_embedding <=> $1) AS distance
-                FROM rules
+                FROM records
                 ORDER BY distance
                 LIMIT $2 OFFSET $3;
                 """,
@@ -109,9 +105,8 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         var idOrdinal = reader.GetOrdinal("id");
         var communityOrdinal = reader.GetOrdinal("community");
         var annotationOrdinal = reader.GetOrdinal("annotation");
+        var genericParamsOrdinal = reader.GetOrdinal("generic_params");
         var forsOrdinal = reader.GetOrdinal("fors");
-        var givensOrdinal = reader.GetOrdinal("givens");
-        var mustBeOrdinal = reader.GetOrdinal("must_be");
         var distanceOrdinal = reader.GetOrdinal("distance");
 
         return ReadToEnumerable(reader, r =>
@@ -119,18 +114,16 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
             var id = r.GetString(idOrdinal);
             var community = r.GetString(communityOrdinal);
             var annotation = r.GetString(annotationOrdinal);
+            var genericParamsJson = r.GetString(genericParamsOrdinal);
             var forsJson = r.GetString(forsOrdinal);
-            var givensJson = r.GetString(givensOrdinal);
-            var mustBeJson = r.GetString(mustBeOrdinal);
 
+            var genericParams =
+                JsonSerializer.Deserialize<string[]>(genericParamsJson, jsonOptions);
             var fors =
                 JsonSerializer.Deserialize<FSharpMap<string, ParamExpr>>(forsJson, jsonOptions);
-            var givens =
-                JsonSerializer.Deserialize<FSharpMap<string, GivenExpr>>(givensJson, jsonOptions);
-            var mustBe = JsonSerializer.Deserialize<ValueExpr>(mustBeJson, jsonOptions);
 
             return (
-                new RuleExpr(id, community, annotation, fors, givens, mustBe),
+                new RecordExpr(id, community, annotation, genericParams, fors),
                 (float)r.GetDouble(distanceOrdinal)
             );
         });

@@ -2,7 +2,7 @@
 
 namespace Rulesage.Shared.Repositories.Abstractions;
 
-public interface INodeRepository: IDocumentRepository
+public interface IRecordRepository: IDocumentRepository
 {
     Task<IEnumerable<RecordExpr>> FindByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default);
     

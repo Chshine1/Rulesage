@@ -42,12 +42,17 @@ public static class ServiceCollectionExtensions
             collection.AddSingleton<IEmbeddingService>(sp =>
                 new OnnxEmbeddingService(sp.GetRequiredService<Tokenizer>(), onnxModelPath));
             collection.AddSingleton<ILlmService, OpenAiCompatibleService>();
-            
-            collection.AddSingleton(sp =>
-                new NpgsqlDataSourceBuilder(dbConnectionString)
-                    .UseLoggerFactory(sp.GetRequiredService<ILoggerFactory>()).Build());
 
-            collection.AddScoped<INodeRepository, NodeRepository>();
+            collection.AddSingleton(sp =>
+            {
+                var builder =
+                    new NpgsqlDataSourceBuilder(dbConnectionString).UseLoggerFactory(
+                        sp.GetRequiredService<ILoggerFactory>());
+                builder.UseVector();
+                return builder.Build();
+            });
+
+            collection.AddScoped<IRecordRepository, RecordRepository>();
             collection.AddScoped<IRuleRepository, RuleRepository>();
 
             return collection;

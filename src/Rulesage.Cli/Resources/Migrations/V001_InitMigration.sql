@@ -1,29 +1,38 @@
-﻿CREATE EXTENSION IF NOT EXISTS vector;
+﻿create extension if not exists vector;
 
-CREATE TABLE IF NOT EXISTS operations (
-    id                 INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    ir                 VARCHAR(64) NOT NULL,
-    description        TEXT NOT NULL,
-    embedding          VECTOR(384) NOT NULL,
-    level              REAL NOT NULL,
-    signature_params   JSONB NOT NULL,
-    signature_outputs  JSONB NOT NULL,
-    subtasks           JSONB NOT NULL,
-    outputs            JSONB NOT NULL
+create table if not exists records
+(
+    id                   varchar(128) primary key,
+    community            varchar(128) not null,
+    annotation           text         not null,
+    annotation_embedding vector(384)  not null,
+    generic_params       jsonb        not null,
+    fors                 jsonb        not null
 );
 
-CREATE TABLE IF NOT EXISTS nodes (
-    id                 INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    ir                 VARCHAR(64) NOT NULL,
-    description        TEXT NOT NULL,
-    embedding          VECTOR(384) NOT NULL,
-    parameters         JSONB NOT NULL
+create table if not exists actions
+(
+    id                   varchar(128) primary key,
+    community            varchar(128) not null,
+    annotation           text         not null,
+    annotation_embedding vector(384)  not null,
+    generic_params       jsonb        not null,
+    fors                 jsonb        not null,
+    returns              jsonb        not null,
+    script               text         not null
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_operations_ir_unique ON operations (ir);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_nodes_ir_unique ON nodes (ir);
+create table if not exists rules
+(
+    id                   varchar(128) primary key,
+    community            varchar(128) not null,
+    annotation           text         not null,
+    annotation_embedding vector(384)  not null,
+    fors                 jsonb        not null,
+    givens               jsonb        not null,
+    must_be              jsonb        not null
+);
 
-CREATE INDEX IF NOT EXISTS idx_operations_embedding_hnsw
-    ON operations USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX IF NOT EXISTS idx_nodes_embedding_hnsw
-    ON nodes USING hnsw (embedding vector_cosine_ops);
+create index if not exists idx_records_embedding_hnsw on records using hnsw (annotation_embedding vector_cosine_ops);
+create index if not exists idx_actions_embedding_hnsw on actions using hnsw (annotation_embedding vector_cosine_ops);
+create index if not exists idx_rules_embedding_hnsw on rules using hnsw (annotation_embedding vector_cosine_ops);
