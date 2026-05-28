@@ -5,14 +5,10 @@ using NpgsqlTypes;
 using Pgvector;
 using Rulesage.Common.Grammar.Ast;
 using Rulesage.Shared.Repositories.Abstractions;
-using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.Shared.Repositories.Implementations;
 
-public class ActionRepository(
-    NpgsqlDataSource dataSource,
-    IEmbeddingService embeddingService,
-    JsonSerializerOptions jsonOptions) : IActionRepository
+public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions jsonOptions) : IActionRepository
 {
     public async Task<IEnumerable<string>> GetDocumentsAsync(CancellationToken cancellationToken = default)
     {
@@ -180,17 +176,12 @@ public class ActionRepository(
         var forsJson = JsonSerializer.Serialize(fors, jsonOptions);
         var returnsJson = JsonSerializer.Serialize(returns, jsonOptions);
 
-        var embeddings = embeddingService
-            .GetBatchEmbeddings(annotations)
-            .Select(v => new Vector(v))
-            .ToArray();
-
         await using var cmd =
             new NpgsqlCommand(
                 """
-                insert into actions (id, community, annotation, generic_params, fors, returns, script, annotation_embedding)
-                select src.id, src.community, src.annotation, e1.generic_params, e2.fors, e3.returns, src.script, src.annotation_embedding 
-                from unnest($1, $2, $3, $7, $8) with ordinality as src(id, community, annotation, script, annotation_embedding, idx)
+                insert into actions (id, community, annotation, generic_params, fors, returns, script)
+                select src.id, src.community, src.annotation, e1.generic_params, e2.fors, e3.returns, src.script
+                from unnest($1, $2, $3, $7) with ordinality as src(id, community, annotation, script, idx)
                 join lateral jsonb_array_elements($4) with ordinality as e1(generic_params, idx1) on src.idx = idx1
                 join lateral jsonb_array_elements($5) with ordinality as e2(fors, idx2) on src.idx = idx2
                 join lateral jsonb_array_elements($6) with ordinality as e3(returns, idx3) on src.idx = idx3
@@ -211,7 +202,6 @@ public class ActionRepository(
         // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
         cmd.Parameters.Add(new NpgsqlParameter
             { Value = scripts, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
-        cmd.Parameters.Add(new NpgsqlParameter { Value = embeddings, DataTypeName = "vector[]" });
 
         await cmd.ExecuteNonQueryAsync(cancellationToken);
         return true;

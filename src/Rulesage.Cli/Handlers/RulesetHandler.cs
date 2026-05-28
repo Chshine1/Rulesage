@@ -8,7 +8,8 @@ public class RulesetHandler(
     IRecordRepository recordRepository,
     IActionRepository actionRepository,
     IRuleRepository ruleRepository,
-    IEmbeddingService embeddingService)
+    IEmbeddingService embeddingService,
+    IEmbeddingManager embeddingManager)
 {
     public async Task SaveAsync(string documentPath, CancellationToken cancellationToken = default)
     {
@@ -17,6 +18,8 @@ public class RulesetHandler(
         await recordRepository.SaveAsync(document.Records, cancellationToken);
         await actionRepository.SaveAsync(document.Actions, cancellationToken);
         await ruleRepository.SaveAsync(document.Rules, cancellationToken);
+        
+        await embeddingManager.GenerateEmbeddings(cancellationToken);
     }
 
     public async Task SearchAsync(string query, int take, CancellationToken cancellationToken = default)

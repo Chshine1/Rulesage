@@ -5,7 +5,7 @@ create table if not exists records
     id                   varchar(128) primary key,
     community            varchar(128) not null,
     annotation           text         not null,
-    annotation_embedding vector(384)  not null,
+    annotation_embedding vector(384),
     generic_params       jsonb        not null,
     fors                 jsonb        not null
 );
@@ -15,7 +15,7 @@ create table if not exists actions
     id                   varchar(128) primary key,
     community            varchar(128) not null,
     annotation           text         not null,
-    annotation_embedding vector(384)  not null,
+    annotation_embedding vector(384),
     generic_params       jsonb        not null,
     fors                 jsonb        not null,
     returns              jsonb        not null,
@@ -27,7 +27,7 @@ create table if not exists rules
     id                   varchar(128) primary key,
     community            varchar(128) not null,
     annotation           text         not null,
-    annotation_embedding vector(384)  not null,
+    annotation_embedding vector(384),
     fors                 jsonb        not null,
     givens               jsonb        not null,
     must_be              jsonb        not null

@@ -27,7 +27,7 @@ public static class ServiceCollectionExtensions
             jsonOptions.MakeReadOnly();
             collection.AddSingleton(jsonOptions);
 
-            collection.Configure<IdfConfig>(config.GetSection("Idf"));
+            collection.Configure<TextCleanerConfig>(config.GetSection("TextCleaner"));
 
             collection.AddSingleton<Tokenizer>(WordPieceTokenizer.Create(vocabPath,
                 new WordPieceOptions
@@ -41,7 +41,7 @@ public static class ServiceCollectionExtensions
                         ["[MASK]"] = 103
                     }
                 }));
-            collection.AddSingleton<IIdfService, IdfService>();
+            collection.AddSingleton<ITextCleaner, TextCleaner>();
             collection.AddSingleton<IEmbeddingService>(sp =>
                 new OnnxEmbeddingService(sp.GetRequiredService<Tokenizer>(), onnxModelPath));
             collection.AddSingleton<ILlmService, OpenAiCompatibleService>();
@@ -58,6 +58,8 @@ public static class ServiceCollectionExtensions
             collection.AddScoped<IRecordRepository, RecordRepository>();
             collection.AddScoped<IActionRepository, ActionRepository>();
             collection.AddScoped<IRuleRepository, RuleRepository>();
+            
+            collection.AddScoped<IEmbeddingManager, EmbeddingManager>();
 
             return collection;
         }
