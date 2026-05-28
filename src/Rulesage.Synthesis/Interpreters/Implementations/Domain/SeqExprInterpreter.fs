@@ -96,7 +96,8 @@ type SeqExprInterpreter
                     args
                     (fun withValues ->
                         task {
-                            let! subRule = ruleRepository.FindByIdAsync(ruleId, ct)
+                            let! rs = ruleRepository.FindByIdsAsync([ruleId], ct)
+                            let subRule = rs |> Seq.head
 
                             let subCtx: SynthesisContext =
                                 {

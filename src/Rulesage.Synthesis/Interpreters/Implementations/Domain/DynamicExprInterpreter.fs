@@ -45,7 +45,8 @@ type DynamicExprInterpreter
                     let! whereValues = synthesizeArgsAsync ctx args
                     return! actionService.CallAsync ctx.CtSource.Token (fst action) whereValues
                 | DynamicExpr.Satisfying(ruleId, args) ->
-                    let! subRule = ruleRepository.FindByIdAsync(ruleId, ctx.CtSource.Token)
+                    let! rs = ruleRepository.FindByIdsAsync([ruleId], ctx.CtSource.Token)
+                    let subRule = rs |> Seq.head
                     let! whereValues = synthesizeArgsAsync ctx args
 
                     let subCtx: SynthesisContext =
