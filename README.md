@@ -234,6 +234,9 @@ must be:
 ```
 
 ```shell
+dotnet run ruleset init
+dotnet run ruleset save --input ./Resources/Rules/meta-rules.rsg
+dotnet run ruleset truncate
 dotnet run network visualize --input ./Resources/Rules/meta-rules.rsg --output ./Resources/Rules/dot
 dotnet run network discover --input ./Resources/Rules/meta-rules.rsg --output ./Resources/Rules/dot --label "interpret-project-items:pi" "interpret-type-spec:ts" "interpret-rule-def:rd" "interpret-record-def:rcd" "interpret-action-def:ad"
 ```

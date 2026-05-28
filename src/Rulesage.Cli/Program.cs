@@ -58,6 +58,7 @@ public class Program
         var nodeCommand = new Command("nodes");
         nodeCommand.Subcommands.Add(NodeCommands.CreateSearchCommand(host.Services));
 
+        rootCommand.Subcommands.Add(rulesetCommand);
         rootCommand.Subcommands.Add(networkCommand);
         rootCommand.Subcommands.Add(operationCommand);
         rootCommand.Subcommands.Add(nodeCommand);

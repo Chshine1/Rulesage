@@ -8,7 +8,7 @@ public static partial class RulesetCommands
 {
     public static Command CreateSaveCommand(IServiceProvider serviceProvider)
     {
-        var cmd = new Command("load", "Load into database")
+        var cmd = new Command("save", "Load into database")
         {
             new Option<FileInfo>("--input")
             {
