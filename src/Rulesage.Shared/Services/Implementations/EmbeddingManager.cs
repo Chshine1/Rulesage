@@ -2,10 +2,11 @@
 using NpgsqlTypes;
 using Pgvector;
 using Rulesage.Shared.Services.Abstractions;
+using Rulesage.Shared.Services.Abstractions.TextCleaner;
 
 namespace Rulesage.Shared.Services.Implementations;
 
-public class EmbeddingManager(NpgsqlDataSource dataSource, ITextCleaner textCleaner, IEmbeddingService embeddingService)
+public class EmbeddingManager(NpgsqlDataSource dataSource, IDocumentSpaceProvider documentSpaceProvider, ITextCleaner textCleaner, IEmbeddingService embeddingService)
     : IEmbeddingManager
 {
     public async Task GenerateEmbeddings(CancellationToken cancellationToken = default)
@@ -22,7 +23,8 @@ public class EmbeddingManager(NpgsqlDataSource dataSource, ITextCleaner textClea
             .Concat(ruleData.Select(x => x.Annotation))
             .ToArray();
 
-        var cleaned = textCleaner.Clean(allDocs.Length, allDocs);
+        var documentSpace = documentSpaceProvider.CreateFromMemory(allDocs);
+        var cleaned = textCleaner.Clean(documentSpace, allDocs);
         var embeddings = embeddingService.GetBatchEmbeddings(cleaned);
 
         var vectors = embeddings.Select(e => new Vector(e)).ToArray();

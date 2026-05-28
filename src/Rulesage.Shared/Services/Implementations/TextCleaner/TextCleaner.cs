@@ -1,8 +1,8 @@
 ﻿using JetBrains.Annotations;
 using Microsoft.Extensions.Options;
-using Rulesage.Shared.Services.Abstractions;
+using Rulesage.Shared.Services.Abstractions.TextCleaner;
 
-namespace Rulesage.Shared.Services.Implementations;
+namespace Rulesage.Shared.Services.Implementations.TextCleaner;
 
 [UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.Members)]
 public class TextCleanerConfig
@@ -11,21 +11,16 @@ public class TextCleanerConfig
 }
 
 internal class TextCleaner(IOptions<TextCleanerConfig> config) : ITextCleaner
-{   
+{
     private readonly TextCleanerConfig _config = config.Value;
 
-    public IEnumerable<string> Clean(int size, IEnumerable<string> texts)
+    public IEnumerable<string> Clean(IDocumentSpace documentSpace, IEnumerable<string> texts)
     {
         var tokenizedDocs = texts
-            .Select(desc => desc.Split([' ', '\n', '\t', '.', ',', '"', '(', ')'], StringSplitOptions.RemoveEmptyEntries))
+            .Select(documentSpace.Tokenize)
             .ToList();
 
-        var df = tokenizedDocs
-            .SelectMany(words => words.Distinct())
-            .GroupBy(word => word)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        return tokenizedDocs.Select(words =>
+        foreach (var words in tokenizedDocs)
         {
             var tfMap = words
                 .GroupBy(w => w)
@@ -38,22 +33,15 @@ internal class TextCleaner(IOptions<TextCleanerConfig> config) : ITextCleaner
                 .Select(w =>
                 {
                     var tf = tfMap.GetValueOrDefault(w, 0.0);
-                    var idf = Idf(w);
-                    var tfidf = tf * idf;
-                    return (Word: w, Tfidf: tfidf);
+                    var idf = documentSpace.GetIdf(w);
+                    return (Word: w, Tfidf: tf * idf);
                 })
                 .OrderByDescending(p => p.Tfidf)
                 .Take(Math.Min(k, distinctWords.Length))
                 .Select(p => p.Word)
                 .ToHashSet();
 
-            var cleaned = string.Join(" ", words.Where(topWords.Contains));
-            return cleaned;
-        });
-
-        double Idf(string word)
-        {
-            return df.TryGetValue(word, out var docFreq) ? Math.Log((size + 1.0) / (docFreq + 1.0)) : 0.0;
+            yield return string.Join(" ", words.Where(topWords.Contains));
         }
     }
 }

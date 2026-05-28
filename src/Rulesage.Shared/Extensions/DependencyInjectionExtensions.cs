@@ -9,7 +9,9 @@ using Npgsql;
 using Rulesage.Shared.Repositories.Abstractions;
 using Rulesage.Shared.Repositories.Implementations;
 using Rulesage.Shared.Services.Abstractions;
+using Rulesage.Shared.Services.Abstractions.TextCleaner;
 using Rulesage.Shared.Services.Implementations;
+using Rulesage.Shared.Services.Implementations.TextCleaner;
 
 namespace Rulesage.Shared.Extensions;
 
@@ -41,6 +43,8 @@ public static class ServiceCollectionExtensions
                         ["[MASK]"] = 103
                     }
                 }));
+            
+            collection.AddSingleton<IDocumentSpaceProvider, InMemoryDocumentSpaceProvider>();
             collection.AddSingleton<ITextCleaner, TextCleaner>();
             collection.AddSingleton<IEmbeddingService>(sp =>
                 new OnnxEmbeddingService(sp.GetRequiredService<Tokenizer>(), onnxModelPath));
