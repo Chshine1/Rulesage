@@ -43,8 +43,10 @@ public class Program
 
         var rootCommand = new RootCommand("Rulesage test");
         
-        var initCommand = InitCommand.CreateInitCommand(host.Services);
+        var initCommand = CommonCommands.CreateInitCommand(host.Services);
+        var truncateCommand = CommonCommands.CreateTruncateCommand(host.Services);
         rootCommand.Subcommands.Add(initCommand);
+        rootCommand.Subcommands.Add(truncateCommand);
         
         var networkCommand = new Command("network");
         networkCommand.Subcommands.Add(NetworkCommands.CreateVisualizeCommand(host.Services));

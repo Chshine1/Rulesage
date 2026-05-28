@@ -30,7 +30,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         await using var cmd =
             new NpgsqlCommand(
                 """
-                SELECT
+                select
                     id,
                     community,
                     annotation,
@@ -38,8 +38,8 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
                     fors,
                     returns,
                     script
-                FROM actions
-                WHERE id=ANY($1) 
+                from actions
+                where id=any($1) 
                 """,
                 conn
             );
@@ -89,7 +89,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         await using var cmd =
             new NpgsqlCommand(
                 """
-                SELECT
+                select
                     id,
                     community,
                     annotation,
@@ -97,10 +97,10 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
                     fors,
                     returns,
                     script,
-                    (annotation_embedding <=> $1) AS distance
-                FROM actions
-                ORDER BY distance
-                LIMIT $2 OFFSET $3;
+                    (annotation_embedding <=> $1) as distance
+                from actions
+                order by distance
+                limit $2 offset $3;
                 """,
                 conn
             );

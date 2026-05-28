@@ -5,7 +5,7 @@ using Npgsql;
 
 namespace Rulesage.Cli.Commands;
 
-public static class InitCommand
+public static partial class CommonCommands
 {
     public static Command CreateInitCommand(IServiceProvider serviceProvider)
     {

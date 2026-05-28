@@ -30,14 +30,14 @@ public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         await using var cmd =
             new NpgsqlCommand(
                 """
-                SELECT
+                select
                     id,
                     community,
                     annotation,
                     generic_params,
                     fors
-                FROM records
-                WHERE id=ANY($1) 
+                from records
+                where id=any($1) 
                 """,
                 conn
             );
@@ -81,16 +81,16 @@ public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         await using var cmd =
             new NpgsqlCommand(
                 """
-                SELECT
+                select
                     id,
                     community,
                     annotation,
                     generic_params,
                     fors,
-                    (annotation_embedding <=> $1) AS distance
-                FROM records
-                ORDER BY distance
-                LIMIT $2 OFFSET $3;
+                    (annotation_embedding <=> $1) as distance
+                from records
+                order by distance
+                limit $2 offset $3;
                 """,
                 conn
             );

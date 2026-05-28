@@ -30,15 +30,15 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         await using var cmd =
             new NpgsqlCommand(
                 """
-                SELECT
+                select
                     id,
                     community,
                     annotation,
                     fors,
                     givens,
                     must_be
-                FROM rules
-                WHERE id=ANY($1) 
+                from rules
+                where id=any($1) 
                 """,
                 conn
             );
@@ -85,16 +85,16 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         await using var cmd =
             new NpgsqlCommand(
                 """
-                SELECT
+                select
                     id,
                     annotation,
                     fors,
                     givens,
                     must_be,
-                    (annotation_embedding <=> $1) AS distance
-                FROM rules
-                ORDER BY distance
-                LIMIT $2 OFFSET $3;
+                    (annotation_embedding <=> $1) as distance
+                from rules
+                order by distance
+                limit $2 offset $3;
                 """,
                 conn
             );
