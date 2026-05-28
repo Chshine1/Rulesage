@@ -9,7 +9,7 @@ type NlTaskResolver(operationRetrievalService: IRuleRetrievalService, operationC
         member _.ResolveAsync cancellationToken nlTask =
             task {
                 let! prefetchedOps =
-                    operationRetrievalService.RetrieveAsync(nlTask, System.Nullable(), cancellationToken)
+                    operationRetrievalService.RetrieveAsync(nlTask, cancellationToken)
 
                 return! operationComposer.ComposeAsync(nlTask, prefetchedOps)
             }

@@ -36,7 +36,7 @@ public class Program
 
                 services.AddHandlers();
                 services.AddSharedModule(dbConnectionString, Path.GetFullPath(onnxRelative, basePath),
-                    Path.GetFullPath(vocabRelative, basePath));
+                    Path.GetFullPath(vocabRelative, basePath), context.Configuration);
                 services.AddGraphModule(context.Configuration);
             })
             .Build();

@@ -7,6 +7,5 @@ public interface IRuleRetrievalService
 {
     Task<RuleExpr[]> RetrieveAsync(
         string nlTask,
-        float? targetLevel = null,
         CancellationToken cancellationToken = default);
 }

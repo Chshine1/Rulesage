@@ -2,7 +2,5 @@
 
 public interface IIdfService
 {
-    Task<float> ComputeAverageIdfAsync(string text, CancellationToken cancellationToken = default);
+    Task<string> CleanAsync(string text, CancellationToken cancellationToken = default);
 }
-
-public interface IRuleIdfService: IIdfService;

@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.Tokenizers;
@@ -16,7 +17,7 @@ public static class ServiceCollectionExtensions
 {
     extension(IServiceCollection collection)
     {
-        public IServiceCollection AddSharedModule(string dbConnectionString, string onnxModelPath, string vocabPath)
+        public IServiceCollection AddSharedModule(string dbConnectionString, string onnxModelPath, string vocabPath, IConfiguration config)
         {
             var jsonOptions = new JsonSerializerOptions
             {
@@ -25,6 +26,8 @@ public static class ServiceCollectionExtensions
             jsonOptions.Converters.Add(new JsonFSharpConverter());
             jsonOptions.MakeReadOnly();
             collection.AddSingleton(jsonOptions);
+
+            collection.Configure<IdfConfig>(config.GetSection("Idf"));
 
             collection.AddSingleton<Tokenizer>(WordPieceTokenizer.Create(vocabPath,
                 new WordPieceOptions
@@ -38,7 +41,7 @@ public static class ServiceCollectionExtensions
                         ["[MASK]"] = 103
                     }
                 }));
-            collection.AddSingleton<IRuleIdfService, RuleIdfService>();
+            collection.AddSingleton<IIdfService, IdfService>();
             collection.AddSingleton<IEmbeddingService>(sp =>
                 new OnnxEmbeddingService(sp.GetRequiredService<Tokenizer>(), onnxModelPath));
             collection.AddSingleton<ILlmService, OpenAiCompatibleService>();

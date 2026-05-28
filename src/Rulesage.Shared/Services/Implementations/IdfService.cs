@@ -1,46 +1,63 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.ML.Tokenizers;
+﻿using JetBrains.Annotations;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Rulesage.Shared.Repositories.Abstractions;
-using Rulesage.Shared.Repositories.Implementations;
 using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.Shared.Services.Implementations;
 
-internal class IdfService<TRepository>: IIdfService where TRepository : IDocumentRepository
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.Members)]
+public class IdfConfig
 {
-    private readonly Tokenizer _tokenizer;
+    public float IdfThreshold { get; init; }
+}
+
+internal class IdfService: IIdfService
+{
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IdfConfig _config;
     private readonly Lazy<Task<IdfData>> _data;
 
-    protected IdfService(IServiceScopeFactory scopeFactory, Tokenizer tokenizer)
+    protected IdfService(IServiceScopeFactory scopeFactory, IOptions<IdfConfig> config)
     {
-        _tokenizer = tokenizer;
         _scopeFactory = scopeFactory;
+        _config = config.Value;
         _data = new Lazy<Task<IdfData>>(LoadIdfData, LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
-    public async Task<float> ComputeAverageIdfAsync(string text, CancellationToken cancellationToken = default)
+    public async Task<string> CleanAsync(string text, CancellationToken cancellationToken = default)
     {
-        var terms = _tokenizer.EncodeToIds(text);
-        if (terms.Count == 0) return 0f;
-        
+        var words = text.Split([' ', '\n', '\t', '.', ',', ':', '\"', '(', ')'], StringSplitOptions.RemoveEmptyEntries);
+            
+        var k = Math.Max(5, (int)(_config.IdfThreshold * words.Length));
         var data = await _data.Value;
-        var sum = terms.Sum(term => data.IdfMap.GetValueOrDefault(term, data.DefaultIdf));
-        return sum / terms.Count;
+        var dWords = words
+            .Distinct()
+            .OrderByDescending(w => data.IdfMap.GetValueOrDefault(w, data.DefaultIdf))
+            .Take(k)
+            .ToArray();
+
+        return string.Concat(words.Where(w => dWords.Contains(w)));
     }
     
     private async Task<IdfData> LoadIdfData()
     {
         using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<TRepository>();
+        var recordRepository = scope.ServiceProvider.GetRequiredService<IRecordRepository>();
+        var actionRepository = scope.ServiceProvider.GetRequiredService<IActionRepository>();
+        var ruleRepository = scope.ServiceProvider.GetRequiredService<IRuleRepository>();
 
-        var documents = await db.GetDocumentsAsync();
+        var recordDocuments = await recordRepository.GetDocumentsAsync();
+        var actionDocuments = await actionRepository.GetDocumentsAsync();
+        var ruleDocuments = await ruleRepository.GetDocumentsAsync();
+        
+        var documents = recordDocuments.Concat(actionDocuments).Concat(ruleDocuments);
 
         var docCount = 0;
-        var termDocFreq = new Dictionary<int, int>();
-        var idfMap = new Dictionary<int, float>();
+        var termDocFreq = new Dictionary<string, int>();
+        var idfMap = new Dictionary<string, float>();
 
-        foreach (var term in documents.SelectMany(doc => _tokenizer.EncodeToIds(doc).Distinct()))
+        foreach (var term in documents.SelectMany(doc => doc.Split([' ', '\n', '\t', '.', ',', ':', '\"', '(', ')'], StringSplitOptions.RemoveEmptyEntries)))
         {
             docCount++;
             termDocFreq[term] = termDocFreq.GetValueOrDefault(term) + 1;
@@ -56,8 +73,5 @@ internal class IdfService<TRepository>: IIdfService where TRepository : IDocumen
         return new IdfData(idfMap, defaultIdf);
     }
     
-    private record IdfData(Dictionary<int, float> IdfMap, float DefaultIdf);
+    private record IdfData(Dictionary<string, float> IdfMap, float DefaultIdf);
 }
-
-internal class RuleIdfService(IServiceScopeFactory scopeFactory, Tokenizer tokenizer)
-    : IdfService<RuleRepository>(scopeFactory, tokenizer), IRuleIdfService;
