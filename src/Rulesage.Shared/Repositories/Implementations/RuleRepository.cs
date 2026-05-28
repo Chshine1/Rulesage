@@ -136,6 +136,11 @@ public class RuleRepository(NpgsqlDataSource dataSource, JsonSerializerOptions j
         });
     }
 
+    public Task<bool> SaveAsync(IEnumerable<RuleExpr> rules, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
     private static IEnumerable<T> ReadToEnumerable<T>(NpgsqlDataReader reader, Func<NpgsqlDataReader, T> func)
     {
         while (reader.Read()) yield return func(reader);

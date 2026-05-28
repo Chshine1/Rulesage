@@ -2,9 +2,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
-namespace Rulesage.Cli.Commands;
+namespace Rulesage.Cli.Commands.Ruleset;
 
-public static partial class CommonCommands
+public static partial class RulesetCommands
 {
     public static Command CreateTruncateCommand(IServiceProvider serviceProvider)
     {

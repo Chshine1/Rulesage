@@ -8,4 +8,6 @@ public interface IRuleRepository : IDocumentRepository
 
     Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector, int skip, int take,
         CancellationToken cancellationToken = default);
+    
+    Task<bool> SaveAsync(IEnumerable<RuleExpr> rules, CancellationToken cancellationToken = default);
 }

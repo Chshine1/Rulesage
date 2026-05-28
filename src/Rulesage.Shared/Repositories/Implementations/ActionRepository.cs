@@ -144,6 +144,11 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         });
     }
 
+    public Task<bool> SaveAsync(IEnumerable<ActionExpr> actions, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
     private static IEnumerable<T> ReadToEnumerable<T>(NpgsqlDataReader reader, Func<NpgsqlDataReader, T> func)
     {
         while (reader.Read()) yield return func(reader);

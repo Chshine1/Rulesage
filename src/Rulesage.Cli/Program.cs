@@ -2,13 +2,13 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
-using Rulesage.Cli.Commands;
 using Rulesage.Cli.Commands.Network;
 using Rulesage.Cli.Commands.Nodes;
 using Rulesage.Cli.Commands.Rules;
 using Rulesage.Cli.Extensions;
 using Rulesage.Graph.Extensions;
 using Rulesage.Shared.Extensions;
+using RulesetCommands = Rulesage.Cli.Commands.Ruleset.RulesetCommands;
 
 namespace Rulesage.Cli;
 
@@ -43,10 +43,10 @@ public class Program
 
         var rootCommand = new RootCommand("Rulesage test");
         
-        var initCommand = CommonCommands.CreateInitCommand(host.Services);
-        var truncateCommand = CommonCommands.CreateTruncateCommand(host.Services);
-        rootCommand.Subcommands.Add(initCommand);
-        rootCommand.Subcommands.Add(truncateCommand);
+        var rulesetCommand = new Command("ruleset");
+        rulesetCommand.Subcommands.Add(RulesetCommands.CreateInitCommand(host.Services));
+        rulesetCommand.Subcommands.Add(RulesetCommands.CreateTruncateCommand(host.Services));
+        rulesetCommand.Subcommands.Add(RulesetCommands.CreateSaveCommand(host.Services));
         
         var networkCommand = new Command("network");
         networkCommand.Subcommands.Add(NetworkCommands.CreateVisualizeCommand(host.Services));

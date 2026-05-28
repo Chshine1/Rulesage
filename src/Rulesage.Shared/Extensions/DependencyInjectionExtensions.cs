@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
             });
 
             collection.AddScoped<IRecordRepository, RecordRepository>();
+            collection.AddScoped<IActionRepository, ActionRepository>();
             collection.AddScoped<IRuleRepository, RuleRepository>();
 
             return collection;
