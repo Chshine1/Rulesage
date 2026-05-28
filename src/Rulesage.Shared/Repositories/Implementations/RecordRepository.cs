@@ -5,10 +5,12 @@ using NpgsqlTypes;
 using Pgvector;
 using Rulesage.Common.Grammar.Ast;
 using Rulesage.Shared.Repositories.Abstractions;
+using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.Shared.Repositories.Implementations;
 
-public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions jsonOptions) : IRecordRepository
+public class RecordRepository(NpgsqlDataSource dataSource,
+    IEmbeddingService embeddingService, JsonSerializerOptions jsonOptions) : IRecordRepository
 {
     public async Task<IEnumerable<string>> GetDocumentsAsync(CancellationToken cancellationToken = default)
     {
@@ -63,7 +65,7 @@ public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
             var forsJson = r.GetString(forsOrdinal);
 
             var genericParams =
-                JsonSerializer.Deserialize<string[]>(genericParamsJson, jsonOptions);
+                JsonSerializer.Deserialize<FSharpList<string>>(genericParamsJson, jsonOptions);
             var fors =
                 JsonSerializer.Deserialize<FSharpMap<string, ParamExpr>>(forsJson, jsonOptions);
 
@@ -118,7 +120,7 @@ public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
             var forsJson = r.GetString(forsOrdinal);
 
             var genericParams =
-                JsonSerializer.Deserialize<string[]>(genericParamsJson, jsonOptions);
+                JsonSerializer.Deserialize<FSharpList<string>>(genericParamsJson, jsonOptions);
             var fors =
                 JsonSerializer.Deserialize<FSharpMap<string, ParamExpr>>(forsJson, jsonOptions);
 
@@ -129,9 +131,63 @@ public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         });
     }
 
-    public Task<bool> SaveAsync(IEnumerable<RecordExpr> records, CancellationToken cancellationToken = default)
+    public async Task<bool> SaveAsync(IEnumerable<RecordExpr> records, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        await using var conn = dataSource.CreateConnection();
+        await conn.OpenAsync(cancellationToken);
+
+        var recordsArray = records.ToArray();
+        var count = recordsArray.Length;
+
+        var ids = new string[count];
+        var communities = new string[count];
+        var annotations = new string[count];
+        var genericParams = new FSharpList<string>[count];
+        var fors = new FSharpMap<string, ParamExpr>[count];
+
+        for (var i = 0; i < count; i++)
+        {
+            var r = recordsArray[i];
+            ids[i] = r.Id;
+            communities[i] = r.Community;
+            annotations[i] = r.Annotation;
+            genericParams[i] = r.GenericParams;
+            fors[i] = r.Fors;
+        }
+
+        var genericParamsJson = JsonSerializer.Serialize(genericParams, jsonOptions);
+        var forsJson = JsonSerializer.Serialize(fors, jsonOptions);
+
+        var embeddings = embeddingService
+            .GetBatchEmbeddings(annotations)
+            .Select(v => new Vector(v))
+            .ToArray();
+
+        await using var cmd =
+            new NpgsqlCommand(
+                """
+                insert into records (id, community, annotation, generic_params, fors, annotation_embedding)
+                select src.id, src.community, src.annotation, e1.generic_params, e2.fors, src.annotation_embedding 
+                from unnest($1, $2, $3, $6) with ordinality as src(id, community, annotation, annotation_embedding, idx)
+                join lateral jsonb_array_elements($4) with ordinality as e1(generic_params, idx1) on src.idx = idx1
+                join lateral jsonb_array_elements($5) with ordinality as e2(fors, idx2) on src.idx = idx2
+                """,
+                conn
+            );
+
+        // ReSharper disable BitwiseOperatorOnEnumWithoutFlags
+        cmd.Parameters.Add(new NpgsqlParameter { Value = ids, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+        cmd.Parameters.Add(new NpgsqlParameter
+            { Value = communities, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+        cmd.Parameters.Add(new NpgsqlParameter
+            { Value = annotations, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+        // ReSharper restore BitwiseOperatorOnEnumWithoutFlags
+        cmd.Parameters.Add(new NpgsqlParameter { Value = genericParamsJson, NpgsqlDbType = NpgsqlDbType.Jsonb });
+        cmd.Parameters.Add(new NpgsqlParameter { Value = forsJson, NpgsqlDbType = NpgsqlDbType.Jsonb });
+        cmd.Parameters.Add(new NpgsqlParameter { Value = embeddings, DataTypeName = "vector[]" });
+
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
+        return true;
     }
 
     private static IEnumerable<T> ReadToEnumerable<T>(NpgsqlDataReader reader, Func<NpgsqlDataReader, T> func)

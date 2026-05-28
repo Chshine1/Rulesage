@@ -21,7 +21,7 @@ type RecordExpr =
         Id: Identifier
         Community: string
         Annotation: string
-        GenericParams: string seq
+        GenericParams: string list
         Fors: Map<string, ParamExpr>
     }
 
@@ -30,7 +30,7 @@ type ActionExpr =
         Id: Identifier
         Community: string
         Annotation: string
-        GenericParams: string seq
+        GenericParams: string list
         Fors: Map<string, ParamExpr>
         Returns: TypeExpr
         Script: string
