@@ -22,7 +22,7 @@ public class RuleRepository(
         await using var cmd = new NpgsqlCommand("SELECT annotation FROM rules", conn);
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
-        return ReadToEnumerable(reader, r => r.GetString(0));
+        return ReadToList(reader, r => r.GetString(0));
     }
 
     public async Task<IEnumerable<RuleExpr>> FindByIdsAsync(IEnumerable<string> ids,
@@ -60,7 +60,7 @@ public class RuleRepository(
         var givensOrdinal = reader.GetOrdinal("givens");
         var mustBeOrdinal = reader.GetOrdinal("must_be");
 
-        return ReadToEnumerable(reader, r =>
+        return ReadToList(reader, r =>
         {
             var id = r.GetString(idOrdinal);
             var community = r.GetString(communityOrdinal);
@@ -91,6 +91,7 @@ public class RuleRepository(
                 """
                 select
                     id,
+                    community,
                     annotation,
                     fors,
                     givens,
@@ -103,8 +104,7 @@ public class RuleRepository(
                 conn
             );
 
-        cmd.Parameters.Add(new NpgsqlParameter
-            { Value = new Vector(queryVector), NpgsqlDbType = NpgsqlDbType.Unknown });
+        cmd.Parameters.Add(new NpgsqlParameter { Value = new Vector(queryVector), DataTypeName = "vector" });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = take, NpgsqlDbType = NpgsqlDbType.Integer });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = skip, NpgsqlDbType = NpgsqlDbType.Integer });
 
@@ -118,7 +118,7 @@ public class RuleRepository(
         var mustBeOrdinal = reader.GetOrdinal("must_be");
         var distanceOrdinal = reader.GetOrdinal("distance");
 
-        return ReadToEnumerable(reader, r =>
+        return ReadToList(reader, r =>
         {
             var id = r.GetString(idOrdinal);
             var community = r.GetString(communityOrdinal);
@@ -204,8 +204,10 @@ public class RuleRepository(
         return true;
     }
 
-    private static IEnumerable<T> ReadToEnumerable<T>(NpgsqlDataReader reader, Func<NpgsqlDataReader, T> func)
+    private static List<T> ReadToList<T>(NpgsqlDataReader reader, Func<NpgsqlDataReader, T> func)
     {
-        while (reader.Read()) yield return func(reader);
+        var result = new List<T>();
+        while (reader.Read()) result.Add(func(reader));
+        return result;
     }
 }

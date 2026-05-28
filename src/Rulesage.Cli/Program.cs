@@ -47,6 +47,7 @@ public class Program
         rulesetCommand.Subcommands.Add(RulesetCommands.CreateInitCommand(host.Services));
         rulesetCommand.Subcommands.Add(RulesetCommands.CreateTruncateCommand(host.Services));
         rulesetCommand.Subcommands.Add(RulesetCommands.CreateSaveCommand(host.Services));
+        rulesetCommand.Subcommands.Add(RulesetCommands.CreateSearchCommand(host.Services));
         
         var networkCommand = new Command("network");
         networkCommand.Subcommands.Add(NetworkCommands.CreateVisualizeCommand(host.Services));
