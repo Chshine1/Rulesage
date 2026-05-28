@@ -1,6 +1,7 @@
 ﻿using Rulesage.Common;
 using Rulesage.Shared.Repositories.Abstractions;
 using Rulesage.Shared.Services.Abstractions;
+using Rulesage.Shared.Services.Abstractions.TextCleaner;
 
 namespace Rulesage.Cli.Handlers;
 
@@ -8,6 +9,8 @@ public class RulesetHandler(
     IRecordRepository recordRepository,
     IActionRepository actionRepository,
     IRuleRepository ruleRepository,
+    IDocumentSpaceProvider documentSpaceProvider,
+    ITextCleaner textCleaner,
     IEmbeddingService embeddingService,
     IEmbeddingManager embeddingManager)
 {
@@ -24,7 +27,10 @@ public class RulesetHandler(
 
     public async Task SearchAsync(string query, int take, CancellationToken cancellationToken = default)
     {
-        var embedding = embeddingService.GetEmbedding(query);
+        var documentSpace = await documentSpaceProvider.GetDocumentSpaceFromDbAsync(cancellationToken);
+        var cleaned = textCleaner.Clean(documentSpace, [query]).First();
+        
+        var embedding = embeddingService.GetEmbedding(cleaned);
 
         var records = await recordRepository.FindOrderByCosineDistanceAsync(embedding, 0, take, cancellationToken);
         var actions = await actionRepository.FindOrderByCosineDistanceAsync(embedding, 0, take, cancellationToken);

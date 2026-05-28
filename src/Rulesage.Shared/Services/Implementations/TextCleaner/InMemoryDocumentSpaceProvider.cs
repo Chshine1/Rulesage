@@ -26,7 +26,14 @@ public class InMemoryDocumentSpaceProvider(NpgsqlDataSource dataSource) : IDocum
             if (_cachedSpace is not null)
                 return _cachedSpace;
 
-            var allAnnotations = await LoadAllAnnotationsAsync(ct);
+            var tasks = new[]
+            {
+                ReadAnnotationsAsync("records", ct),
+                ReadAnnotationsAsync("actions", ct),
+                ReadAnnotationsAsync("rules", ct)
+            };
+            var results = await Task.WhenAll(tasks);
+            var allAnnotations = results.SelectMany(x => x).ToList();
             _cachedSpace = new InMemoryDocumentSpace(allAnnotations);
             return _cachedSpace;
         }
@@ -36,25 +43,11 @@ public class InMemoryDocumentSpaceProvider(NpgsqlDataSource dataSource) : IDocum
         }
     }
 
-    private async Task<List<string>> LoadAllAnnotationsAsync(CancellationToken ct)
+    private async Task<List<string>> ReadAnnotationsAsync(string tableName, CancellationToken ct)
     {
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(ct);
 
-        var tasks = new[]
-        {
-            ReadAnnotationsAsync(conn, "records", ct),
-            ReadAnnotationsAsync(conn, "actions", ct),
-            ReadAnnotationsAsync(conn, "rules", ct)
-        };
-        var results = await Task.WhenAll(tasks);
-
-        return results.SelectMany(x => x).ToList();
-    }
-
-    private static async Task<List<string>> ReadAnnotationsAsync(
-        NpgsqlConnection conn, string tableName, CancellationToken ct)
-    {
         var annotations = new List<string>();
         await using var cmd = new NpgsqlCommand(
             $"SELECT annotation FROM {tableName} ORDER BY id", conn);
