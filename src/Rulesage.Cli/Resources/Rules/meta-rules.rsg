@@ -50,9 +50,10 @@ given:
        +" - record ids from availableRecords (which may include generic placeholders)"
        +"For generic record ids, they don't have to be closed, allowing freshly introduced open placeholder names (but must NOT collide with keys in generic context)."
        +"The second element is a dictionary of (placeholder name, needed type description) for each open placeholder that still needs to be resolved from its description into an actual TypeSpec."
+  genericTypes:
+    seq satisfying interpret-type-spec where typeDesc = iter $given.rawType.val2.val2, genericContext = $for.genericContext
   genericParams:
-    ref(record Tuple<literal, record TypeSpec>[]) in meta-type
-        "a dictionary of name-TypeSpec resolved from (name, needed type descriptions): {$given.rawType}, with generic context: {$for.genericContext}."
+    seq record Tuple<literal, record TypeSpec> with val1 = iter $given.rawType.val2.val1, val2 = iter $given.genericTypes
 must be:
   ref(TypeSpec) in none
       "the final, fully closed TypeSpec from a raw type {$given.rawType}, with open generic placeholders resolved by types: {$given.genericParams}."
@@ -68,6 +69,14 @@ record RecordDef with
 @"A record definition intent with a string name, a name-description dictionary of generic parameters, and a (name, expected type definition) dictionary of fields."
 record RecordDefIntent with
   name(literal), genericParams(record Tuple<literal, literal>[]), fields(record Tuple<literal, literal>[])
+
+#meta-record
+rule interpret-record-annotation for
+  rawText(literal), name(literal),
+  genericParams(record Tuple<literal, literal>[]),
+  fields(Tuple<literal, record TypeSpec>[])
+must be: ref(literal) in none
+  "the complete declarative description of the structure and shapes for the record definition: {$for.rawText}, whose name is {$for.name}, has generic parameters: {$for.genericParams} and fields: {$for.fields}"
 
 #meta-record
 @"Interprets a natural-language text that describes exactly one record type definition into a standardized RecordDef"
@@ -91,8 +100,9 @@ given:
     ref(literal) in none
       "the full id in the form of `name(\"<\"name1, name2, ...\">\")` where namei are generic param names, givem name: {$given.intent.name} and params: {$given.intent.genericParams.val1}"
   annotation:
-    ref(literal) in meta-record
-        "the complete declarative description of the structure and shapes for the record definition: {$for.rawText}, whose name is {$given.intent.name}, has generic parameters: {$given.intent.genericParams} and fields: {$given.intent.fields}"
+    satisfying interpret-record-annotation with
+      rawText = $for.rawText, name = $given.intent.name,
+      genericParams = $given.intent.genericParams, fields = $given.intent.fields
 must be:
   record RecordDef with
     id = $given.recordId,
