@@ -77,7 +77,7 @@ public class RuleRepository(
         });
     }
 
-    public async Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector,
+    public async Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(string community, float[] queryVector,
         int skip, int take,
         CancellationToken cancellationToken = default)
     {
@@ -96,20 +96,21 @@ public class RuleRepository(
                     must_be,
                     (annotation_embedding <=> $1) as distance
                 from rules
+                where community = $2
                 order by distance
-                limit $2 offset $3;
+                limit $3 offset $4;
                 """,
                 conn
             );
 
         cmd.Parameters.Add(new NpgsqlParameter { Value = new Vector(queryVector), DataTypeName = "vector" });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = community, NpgsqlDbType = NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = take, NpgsqlDbType = NpgsqlDbType.Integer });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = skip, NpgsqlDbType = NpgsqlDbType.Integer });
 
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
         var idOrdinal = reader.GetOrdinal("id");
-        var communityOrdinal = reader.GetOrdinal("community");
         var annotationOrdinal = reader.GetOrdinal("annotation");
         var forsOrdinal = reader.GetOrdinal("fors");
         var givensOrdinal = reader.GetOrdinal("givens");
@@ -119,7 +120,6 @@ public class RuleRepository(
         return ReadToList(reader, r =>
         {
             var id = r.GetString(idOrdinal);
-            var community = r.GetString(communityOrdinal);
             var annotation = r.GetString(annotationOrdinal);
             var forsJson = r.GetString(forsOrdinal);
             var givensJson = r.GetString(givensOrdinal);

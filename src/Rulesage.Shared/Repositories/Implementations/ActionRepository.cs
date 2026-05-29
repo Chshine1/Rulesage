@@ -79,7 +79,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         });
     }
 
-    public async Task<IEnumerable<(ActionExpr, float)>> FindOrderByCosineDistanceAsync(float[] queryVector,
+    public async Task<IEnumerable<(ActionExpr, float)>> FindOrderByCosineDistanceAsync(string community, float[] queryVector,
         int skip, int take,
         CancellationToken cancellationToken = default)
     {
@@ -91,7 +91,6 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
                 """
                 select
                     id,
-                    community,
                     annotation,
                     generic_params,
                     fors,
@@ -99,20 +98,21 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
                     script,
                     (annotation_embedding <=> $1) as distance
                 from actions
+                where community = $2
                 order by distance
-                limit $2 offset $3;
+                limit $3 offset $4;
                 """,
                 conn
             );
 
         cmd.Parameters.Add(new NpgsqlParameter { Value = new Vector(queryVector), DataTypeName = "vector" });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = community, NpgsqlDbType = NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = take, NpgsqlDbType = NpgsqlDbType.Integer });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = skip, NpgsqlDbType = NpgsqlDbType.Integer });
 
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
         var idOrdinal = reader.GetOrdinal("id");
-        var communityOrdinal = reader.GetOrdinal("community");
         var annotationOrdinal = reader.GetOrdinal("annotation");
         var genericParamsOrdinal = reader.GetOrdinal("generic_params");
         var forsOrdinal = reader.GetOrdinal("fors");
@@ -123,7 +123,6 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         return ReadToList(reader, r =>
         {
             var id = r.GetString(idOrdinal);
-            var community = r.GetString(communityOrdinal);
             var annotation = r.GetString(annotationOrdinal);
             var genericParamsJson = r.GetString(genericParamsOrdinal);
             var forsJson = r.GetString(forsOrdinal);

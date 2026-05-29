@@ -25,16 +25,16 @@ public class RulesetHandler(
         await embeddingManager.GenerateEmbeddings(cancellationToken);
     }
 
-    public async Task SearchAsync(string query, int take, CancellationToken cancellationToken = default)
+    public async Task SearchAsync(string community, string query, int take, CancellationToken cancellationToken = default)
     {
         var documentSpace = await documentSpaceProvider.GetDocumentSpaceFromDbAsync(cancellationToken);
         var cleaned = textCleaner.Clean(documentSpace, [query]).First();
         
         var embedding = embeddingService.GetEmbedding(cleaned);
 
-        var records = await recordRepository.FindOrderByCosineDistanceAsync(embedding, 0, take, cancellationToken);
-        var actions = await actionRepository.FindOrderByCosineDistanceAsync(embedding, 0, take, cancellationToken);
-        var rules = await ruleRepository.FindOrderByCosineDistanceAsync(embedding, 0, take, cancellationToken);
+        var records = await recordRepository.FindOrderByCosineDistanceAsync(community, embedding, 0, take, cancellationToken);
+        var actions = await actionRepository.FindOrderByCosineDistanceAsync(community, embedding, 0, take, cancellationToken);
+        var rules = await ruleRepository.FindOrderByCosineDistanceAsync(community, embedding, 0, take, cancellationToken);
 
         var ids = records.Select(r => ("Record", r.Item1.Id, r.Item2)).Concat(
                 actions.Select(r => ("Action", r.Item1.Id, r.Item2))).Concat(

@@ -23,7 +23,7 @@ internal class RuleRetrievalService(
         var queryVector = embeddingService.GetEmbedding(nlTask);
 
         var coarseCandidates =
-            (await ruleRepository.FindOrderByCosineDistanceAsync(queryVector, 0, _options.CoarseRecallSize,
+            (await ruleRepository.FindOrderByCosineDistanceAsync("none", queryVector, 0, _options.CoarseRecallSize,
                 cancellationToken)).ToArray();
 
         if (logger.IsEnabled(LogLevel.Debug))

@@ -10,6 +10,10 @@ public static partial class RulesetCommands
     {
         var cmd = new Command("search", "Load into database")
         {
+            new Option<string>("--community")
+            {
+                Required = true,
+            },
             new Option<string>("--query")
             {
                 Required = true
@@ -27,6 +31,7 @@ public static partial class RulesetCommands
             var handler = scope.ServiceProvider.GetRequiredService<RulesetHandler>();
 
             await handler.SearchAsync(
+                result.GetRequiredValue<string>("--community"),
                 result.GetRequiredValue<string>("--query"),
                 result.GetRequiredValue<int>("--take"),
                 cancellationToken);
