@@ -34,7 +34,7 @@ public class RuleRepository(
                 """
                 select
                     id,
-                    community,
+                    community_id,
                     annotation,
                     fors,
                     givens,
@@ -52,7 +52,7 @@ public class RuleRepository(
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
         var idOrdinal = reader.GetOrdinal("id");
-        var communityOrdinal = reader.GetOrdinal("community");
+        var communityOrdinal = reader.GetOrdinal("community_id");
         var annotationOrdinal = reader.GetOrdinal("annotation");
         var forsOrdinal = reader.GetOrdinal("fors");
         var givensOrdinal = reader.GetOrdinal("givens");
@@ -89,14 +89,13 @@ public class RuleRepository(
                 """
                 select
                     id,
-                    community,
                     annotation,
                     fors,
                     givens,
                     must_be,
                     (annotation_embedding <=> $1) as distance
                 from rules
-                where community = $2
+                where community_id = $2
                 order by distance
                 limit $3 offset $4;
                 """,
@@ -133,7 +132,7 @@ public class RuleRepository(
 
             return (
                 new RuleExpr(id, community, annotation, fors, givens, mustBe),
-                (float)r.GetDouble(distanceOrdinal)
+                1f - (float)r.GetDouble(distanceOrdinal)
             );
         });
     }
@@ -171,7 +170,7 @@ public class RuleRepository(
         await using var cmd =
             new NpgsqlCommand(
                 """
-                insert into rules (id, community, annotation, fors, givens, must_be)
+                insert into rules (id, community_id, annotation, fors, givens, must_be)
                 select src.id, src.community, src.annotation, e1.fors, e2.givens, e3.must_be
                 from unnest($1, $2, $3) with ordinality as src(id, community, annotation, idx)
                 join lateral jsonb_array_elements($4) with ordinality as e1(fors, idx1) on src.idx = idx1

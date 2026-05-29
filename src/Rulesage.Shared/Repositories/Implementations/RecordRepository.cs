@@ -32,7 +32,7 @@ public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
                 """
                 select
                     id,
-                    community,
+                    community_id,
                     annotation,
                     generic_params,
                     fors
@@ -49,7 +49,7 @@ public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
         var idOrdinal = reader.GetOrdinal("id");
-        var communityOrdinal = reader.GetOrdinal("community");
+        var communityOrdinal = reader.GetOrdinal("community_id");
         var annotationOrdinal = reader.GetOrdinal("annotation");
         var genericParamsOrdinal = reader.GetOrdinal("generic_params");
         var forsOrdinal = reader.GetOrdinal("fors");
@@ -83,13 +83,12 @@ public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
                 """
                 select
                     id,
-                    community,
                     annotation,
                     generic_params,
                     fors,
                     (annotation_embedding <=> $1) as distance
                 from records
-                where community = $2
+                where community_id = $2
                 order by distance
                 limit $3 offset $4;
                 """,
@@ -123,7 +122,7 @@ public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
 
             return (
                 new RecordExpr(id, community, annotation, genericParams, fors),
-                (float)r.GetDouble(distanceOrdinal)
+                1f - (float)r.GetDouble(distanceOrdinal)
             );
         });
     }
@@ -158,7 +157,7 @@ public class RecordRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         await using var cmd =
             new NpgsqlCommand(
                 """
-                insert into records (id, community, annotation, generic_params, fors)
+                insert into records (id, community_id, annotation, generic_params, fors)
                 select src.id, src.community, src.annotation, e1.generic_params, e2.fors
                 from unnest($1, $2, $3) with ordinality as src(id, community, annotation, idx)
                 join lateral jsonb_array_elements($4) with ordinality as e1(generic_params, idx1) on src.idx = idx1

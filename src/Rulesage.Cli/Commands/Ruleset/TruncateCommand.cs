@@ -24,6 +24,7 @@ public static partial class RulesetCommands
                     truncate table rules restart identity;
                     truncate table actions restart identity;
                     truncate table records restart identity;
+                    truncate table communities restart identity;
                     """,
                     conn);
             await sqlCommand.ExecuteNonQueryAsync(cancellationToken);

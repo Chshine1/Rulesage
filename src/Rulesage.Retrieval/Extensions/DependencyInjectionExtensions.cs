@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.ML.Tokenizers;
 using Rulesage.Retrieval.Options;
-using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.Retrieval.Extensions;
 

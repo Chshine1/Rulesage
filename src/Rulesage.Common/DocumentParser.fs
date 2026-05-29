@@ -12,6 +12,7 @@ type Document =
         Rules: RuleExpr list
         Records: RecordExpr list
         Actions: ActionExpr list
+        Communities: CommunityExpr list
     }
 
 module DocumentParser =
@@ -19,15 +20,18 @@ module DocumentParser =
         | RuleDef of RuleExpr
         | RecordDef of RecordExpr
         | ActionDef of ActionExpr
+        | CommunityDef of CommunityExpr
 
     let private pAstNode: Parser<AstNode> =
-        skipChar '#' >>. pId .>> spaces1 .>>. pAnnotation .>> spaces
-        >>= fun (community, annotation) ->
+        opt (skipChar '#' >>. pCommunityTag .>> spaces1) .>>. pAnnotation .>> spaces
+        >>= fun (oCommunity, annotation) ->
+            let community = oCommunity |> Option.defaultValue ""
             choice
                 [
                     pRule community annotation |>> RuleDef
                     pRecord community annotation |>> RecordDef
                     pAction community annotation |>> ActionDef
+                    pCommunity community annotation |>> CommunityDef
                 ]
 
     let private pDocument: Parser<AstNode list> =
@@ -60,9 +64,18 @@ module DocumentParser =
                     | _ -> None
                 )
 
+            let communities =
+                nodes
+                |> List.choose (
+                    function
+                    | CommunityDef a -> Some a
+                    | _ -> None
+                )
+
             {
                 Rules = rules
                 Records = records
                 Actions = actions
+                Communities = communities
             }
         | Failure(msg, _, _) -> failwith msg

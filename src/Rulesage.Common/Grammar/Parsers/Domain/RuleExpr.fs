@@ -36,6 +36,12 @@ type ActionExpr =
         Script: string
     }
 
+type CommunityExpr =
+    {
+        Sections: string seq
+        Annotation: string
+    }
+
 namespace Rulesage.Common.Grammar.Parsers.Domain
 
 open FParsec
@@ -116,4 +122,12 @@ module Rule =
                 Fors = fs |> Seq.map (fun f -> f.Key, f) |> Map.ofSeq
                 Returns = r
                 Script = ""
+            }
+    
+    let pCommunity (community: string) (annotation: string) : Parser<CommunityExpr> =
+        skipString "community" .>> s1 >>. pKey
+        |>> fun s ->
+            {
+                Sections = [s] |> Seq.append (community.Split '.')
+                Annotation = annotation
             }

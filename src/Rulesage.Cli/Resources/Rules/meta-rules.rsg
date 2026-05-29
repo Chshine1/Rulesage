@@ -1,4 +1,7 @@
-﻿#common
+﻿@"The community for common types/actions/rules"
+community common
+
+#common
 @"A generic tuple of two values"
 record Tuple<t1, t2> with val1(t1), val2(t2)
 
@@ -12,29 +15,40 @@ action findInDictionary<tk, tv> on dictionary(record Tuple<tk, tv>[]), key(tk) r
 
 
 
-#meta-ruleset
+@""
+community meta
+
+#meta
+@""
+community ruleset
+
+#meta.ruleset
 @"A compact description of a single ruleset unit, containing its unique id, its unit type (\"record\"|\"rule\"|\"action\"), and its natural language annotation."
 record UnitSummary with
   id(literal), unitType(literal), annotation(literal)
 
-#meta-ruleset
+#meta.ruleset
 @"A collection of ids (of records/rules/actions, respectively), which describes a query against the quleset requiring units of these ids"
 record RulesetQuery with
   recordIds(literal[]),
   ruleIds(literal[]),
   actionIds(literal[])
 
-#meta-ruleset
+#meta.ruleset
 @"Find units in the ruleset by semantic similarity to a literal query, return the similar units as an array of record UnitSummary"
 action retrieveSimilarUnits on query(literal) returns record UnitSummary[]
 
 
 
-#meta-type
+#meta
+@""
+community type
+
+#meta.type
 @"A type spec reference. It only has a literal string *typeId*, which must be of `type-id := base-id (\"[]\")?`, and `base-id = \"literal\" | (\"record\" record-id generic-params) | type-id`. Here generic params are passed as `\"<\"t1,t2,...\">\"` if needed, and `t1,t2` are again type identifiers or generic names provided a generic context."
 record TypeSpec with typeId(literal)
 
-#meta-type
+#meta.type
 @"Interprets a natural language type description phrase into a TypeSpec, where the type can only be a literal string/generic record and their arrays without any other type features, provided a generic context (a name‑description dictionary of generic type parameters)."
 rule interpret-type-spec for typeDesc(literal), genericContext(record Tuple<literal, literal>[])
 given:
@@ -60,17 +74,24 @@ must be:
 
 
 
-#meta-record
+#meta
+@""
+community record
+
+#meta.record
 @"A record definition. It has a unique identifier *id*, an array *fields* of the full set of mandatory fields (a key-type typle for each), and an annotation that is the complete structural contract of the type (including any grammar syntax when applicable)."
 record RecordDef with
   annotation(literal), id(literal), fields(record Tuple<literal, record TypeSpec>[])
 
-#none
 @"A record definition intent with a string name, a name-description dictionary of generic parameters, and a (name, expected type definition) dictionary of fields."
 record RecordDefIntent with
   name(literal), genericParams(record Tuple<literal, literal>[]), fields(record Tuple<literal, literal>[])
 
-#meta-record
+#meta.record
+@""
+community annotation
+
+#meta.record.annotation
 rule interpret-record-annotation for
   rawText(literal), name(literal),
   genericParams(record Tuple<literal, literal>[]),
@@ -78,7 +99,7 @@ rule interpret-record-annotation for
 must be: ref(literal) in none
   "the complete declarative description of the structure and shapes for the record definition: {$for.rawText}, whose name is {$for.name}, has generic parameters: {$for.genericParams} and fields: {$for.fields}"
 
-#meta-record
+#meta.record
 @"Interprets a natural-language text that describes exactly one record type definition into a standardized RecordDef"
 +"The description must declare all mandatory fields with their names and a detailed type and structural description. And it should be purely structural and declarative: describing what shape the data has, not how it is computed or when it is used"
 rule interpret-record-def for rawText(literal)

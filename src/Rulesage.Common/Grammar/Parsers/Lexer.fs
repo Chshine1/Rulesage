@@ -8,6 +8,7 @@ module Lexer =
 
     let pId: Parser<string> = regex "[a-zA-Z-][a-zA-Z0-9-]*"
     let pKey: Parser<string> = regex "[a-zA-Z][a-zA-Z0-9]*"
+    let pCommunityTag: Parser<string> = regex "[a-zA-Z]+(\.[a-zA-Z]+)*"
 
     let pGeneric: Parser<string> =
         regex "[a-zA-Z][a-zA-Z0-9]*" .>> many (skipString "[]")

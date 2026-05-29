@@ -1,6 +1,4 @@
-﻿using Rulesage.Composition.Types;
-
-namespace Rulesage.Composition.Services.Abstractions;
+﻿namespace Rulesage.Composition.Services.Abstractions;
 
 public interface ITypeAnnotator
 {
