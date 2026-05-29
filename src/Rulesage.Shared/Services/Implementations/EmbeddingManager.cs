@@ -14,11 +14,13 @@ public class EmbeddingManager(NpgsqlDataSource dataSource, IDocumentSpaceProvide
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(cancellationToken);
 
+        var communityData = await ReadAnnotationsAsync(conn, "communities", cancellationToken);
         var recordData = await ReadAnnotationsAsync(conn, "records", cancellationToken);
         var actionData = await ReadAnnotationsAsync(conn, "actions", cancellationToken);
         var ruleData = await ReadAnnotationsAsync(conn, "rules", cancellationToken);
 
-        var allDocs = recordData.Select(x => x.Annotation)
+        var allDocs = communityData.Select(x => x.Annotation)
+            .Concat(recordData.Select(x => x.Annotation))
             .Concat(actionData.Select(x => x.Annotation))
             .Concat(ruleData.Select(x => x.Annotation))
             .ToArray();
@@ -29,13 +31,16 @@ public class EmbeddingManager(NpgsqlDataSource dataSource, IDocumentSpaceProvide
 
         var vectors = embeddings.Select(e => new Vector(e)).ToArray();
 
+        var comCount = communityData.Count;
         var recCount = recordData.Count;
         var actCount = actionData.Count;
 
-        var recVectors = vectors[..recCount];
-        var actVectors = vectors[recCount..(recCount + actCount)];
-        var ruleVectors = vectors[(recCount + actCount)..];
+        var comVectors = vectors[..comCount];
+        var recVectors = vectors[comCount..(comCount + recCount)];
+        var actVectors = vectors[(comCount + recCount)..(comCount + recCount + actCount)];
+        var ruleVectors = vectors[(comCount + recCount + actCount)..];
 
+        await BulkUpdateEmbeddings(conn, "communities", communityData, comVectors, cancellationToken);
         await BulkUpdateEmbeddings(conn, "records", recordData, recVectors, cancellationToken);
         await BulkUpdateEmbeddings(conn, "actions", actionData, actVectors, cancellationToken);
         await BulkUpdateEmbeddings(conn, "rules", ruleData, ruleVectors, cancellationToken);

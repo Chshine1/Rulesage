@@ -1,8 +1,8 @@
 ﻿create table if not exists communities
 (
     id                   varchar(256) primary key,
-    parent_id            varchar(256),
-    annotation           text,
+    parent_id            varchar(256) not null,
+    annotation           text         not null,
     annotation_embedding vector(384)
 );
 

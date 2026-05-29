@@ -28,6 +28,7 @@ public class InMemoryDocumentSpaceProvider(NpgsqlDataSource dataSource) : IDocum
 
             var tasks = new[]
             {
+                ReadAnnotationsAsync("communities", ct),
                 ReadAnnotationsAsync("records", ct),
                 ReadAnnotationsAsync("actions", ct),
                 ReadAnnotationsAsync("rules", ct)

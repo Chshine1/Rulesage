@@ -15,11 +15,11 @@ action findInDictionary<tk, tv> on dictionary(record Tuple<tk, tv>[]), key(tk) r
 
 
 
-@""
+@"Some test meta 1"
 community meta
 
 #meta
-@""
+@"Whatever"
 community ruleset
 
 #meta.ruleset
@@ -41,7 +41,7 @@ action retrieveSimilarUnits on query(literal) returns record UnitSummary[]
 
 
 #meta
-@""
+@"Nope"
 community type
 
 #meta.type
@@ -75,7 +75,7 @@ must be:
 
 
 #meta
-@""
+@"Maybe this would work"
 community record
 
 #meta.record
@@ -88,14 +88,15 @@ record RecordDefIntent with
   name(literal), genericParams(record Tuple<literal, literal>[]), fields(record Tuple<literal, literal>[])
 
 #meta.record
-@""
+@"Test test test"
 community annotation
 
 #meta.record.annotation
+@"Interprets a natural language for a record annotation into a standardized one"
 rule interpret-record-annotation for
   rawText(literal), name(literal),
   genericParams(record Tuple<literal, literal>[]),
-  fields(Tuple<literal, record TypeSpec>[])
+  fields(record Tuple<literal, record TypeSpec>[])
 must be: ref(literal) in none
   "the complete declarative description of the structure and shapes for the record definition: {$for.rawText}, whose name is {$for.name}, has generic parameters: {$for.genericParams} and fields: {$for.fields}"
 
@@ -121,7 +122,7 @@ given:
     ref(literal) in none
       "the full id in the form of `name(\"<\"name1, name2, ...\">\")` where namei are generic param names, givem name: {$given.intent.name} and params: {$given.intent.genericParams.val1}"
   annotation:
-    satisfying interpret-record-annotation with
+    satisfying interpret-record-annotation where
       rawText = $for.rawText, name = $given.intent.name,
       genericParams = $given.intent.genericParams, fields = $given.intent.fields
 must be:

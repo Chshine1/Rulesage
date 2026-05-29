@@ -29,16 +29,16 @@ public class CommunityRepository(NpgsqlDataSource dataSource) : ICommunityReposi
         await conn.OpenAsync(cancellationToken);
 
         var sections = contextCommunity.Split('.');
-        var hierarchy = new string?[sections.Length];
+        var hierarchy = new string[sections.Length];
         var sectionSum = "";
-        hierarchy[0] = null;
+        hierarchy[0] = "";
         for (var i = 0; i < sections.Length; i++)
         {
             sectionSum += sections[i];
             hierarchy[i + 1] = sectionSum;
         }
 
-        var hierarchyIds = hierarchy[1..^1];
+        var hierarchyIds = hierarchy[1..];
 
         await using var cmd = new NpgsqlCommand(
             """
@@ -57,7 +57,7 @@ public class CommunityRepository(NpgsqlDataSource dataSource) : ICommunityReposi
         // ReSharper disable BitwiseOperatorOnEnumWithoutFlags
         cmd.Parameters.Add(new NpgsqlParameter<float[]>
             { Value = queryVector, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Real });
-        cmd.Parameters.Add(new NpgsqlParameter<string?[]>
+        cmd.Parameters.Add(new NpgsqlParameter<string[]>
             { Value = hierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter<string[]>
             { Value = hierarchyIds, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
@@ -90,27 +90,31 @@ public class CommunityRepository(NpgsqlDataSource dataSource) : ICommunityReposi
         var count = communitiesArray.Length;
 
         var ids = new string[count];
+        var parentIds = new string[count];
         var annotations = new string[count];
 
         for (var i = 0; i < count; i++)
         {
-            var r = communitiesArray[i];
-            ids[i] = string.Concat(r.Sections);
-            annotations[i] = r.Annotation;
+            var c = communitiesArray[i];
+            ids[i] = c.Sections.Aggregate((a, b) => $"{a}.{b}");
+            var last = ids[i].LastIndexOf('.');
+            parentIds[i] = last < 0 ? "" : ids[i][..last];
+            annotations[i] = c.Annotation;
         }
 
         await using var cmd =
             new NpgsqlCommand(
                 """
-                insert into communities (id, annotation)
-                select src.id, src.annotation
-                from unnest($1, $2) as src(id, annotation)
+                insert into communities (id, parent_id, annotation)
+                select src.id, src.parent_id, src.annotation
+                from unnest($1, $2, $3) as src(id, parent_id, annotation)
                 """,
                 conn
             );
 
         // ReSharper disable BitwiseOperatorOnEnumWithoutFlags
         cmd.Parameters.Add(new NpgsqlParameter { Value = ids, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+        cmd.Parameters.Add(new NpgsqlParameter { Value = parentIds, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter
             { Value = annotations, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         // ReSharper restore BitwiseOperatorOnEnumWithoutFlags

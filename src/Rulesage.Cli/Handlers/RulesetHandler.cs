@@ -6,6 +6,7 @@ using Rulesage.Shared.Services.Abstractions.TextCleaner;
 namespace Rulesage.Cli.Handlers;
 
 public class RulesetHandler(
+    ICommunityRepository communityRepository,
     IRecordRepository recordRepository,
     IActionRepository actionRepository,
     IRuleRepository ruleRepository,
@@ -18,6 +19,7 @@ public class RulesetHandler(
     {
         var document = DocumentParser.Parse(await File.ReadAllTextAsync(documentPath, cancellationToken));
 
+        await communityRepository.SaveAsync(document.Communities, cancellationToken);
         await recordRepository.SaveAsync(document.Records, cancellationToken);
         await actionRepository.SaveAsync(document.Actions, cancellationToken);
         await ruleRepository.SaveAsync(document.Rules, cancellationToken);
