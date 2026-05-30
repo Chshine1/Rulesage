@@ -22,8 +22,7 @@ public class Planner(ILlmService llm) : IPlanner
         - result of <action-id> where ...
         - interpretation of <rule-id> where ...
         - sequential: apply one of the above element-wise, using each param = (value|elements in arrayValue) (multiple arrays are processed lockstep, yielding an array of results)
-        - delegate to <community‑id> "subject" (the subject must be a noun to be interpreted which allows interpolation, not a command or task)
-          If no community fits, use: delegate to none "subject"
+        - delegate to <community‑id> "subject" (allows interpolation). If no community fits, use: delegate to none "subject"
         - just a value
         
         where values can be:
