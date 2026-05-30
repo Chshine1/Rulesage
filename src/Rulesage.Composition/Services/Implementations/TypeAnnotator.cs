@@ -7,39 +7,36 @@ public class TypeAnnotator(ILlmService llm): ITypeAnnotator
 {
     private const string SystemPrompt =
         """
-        Transform a structure to be strictly defined and a step-by-step plan into a type-annotated call chain.
+        Construct a type-annotated call chain, from a step-by-step plan of interpreting a subject into a standardized record tree.
         Work interactively, one section per turn, in this order:
         
         1. REQUEST_SIGNATURES
-           Inspect the plan and list only the rules, nodes, or actions whose full type signatures you need.
-           - Use the plan's Rule/Node/Action ids.
+           Inspect the plan and list only the records, actions, rules or communities whose full signatures you need:
+           The signatures for actions/rules are their parameters and return types, for records are their field types, and for communities are record types contained in them
+           - Use the ids appearing in the plan.
            - Output exactly:
              REQUEST_SIGNATURES (all are optional, can be ignored if the array is empty)
-             - rules: <id1>, <id2>, ...
-             - nodes: ...
+             - records: <id1>, <id2>, ...
              - actions: ...
+             - rules: ...
+             - communities: ...
            - Optionally, include an ASSUMPTIONS block recording your inferred type assumptions.
         
         2. REQUEST_DESCRIPTIONS
            After receiving the requested signatures, if some gap in the plan is still ambiguous, ask for semantic clarifications.
            - Output exactly:
              REQUEST_DESCRIPTIONS
-             - rules: <id1>, <id2>, ...
-             - nodes: ...
-             - actions: ...
-           - Or, if none needed, output:
-             REQUEST_DESCRIPTIONS
-             None
+             - records: <id1>, <id2>, ...
+             - ...
            - Optionally, include an INSIGHTS block to record your current understanding of the plan's semantics.
         
         3. ANNOTATED PLAN
             With all necessary types and semantics, output the plan annotated with types and dataflow.
             Follow these patterns:
-            - Start a step with `key: description :: output_type`
+            - Start a step with `key: description :: output-type`
             - Preserve natural-language parts in double quotes
-            - Use rule 'id', node 'id', action 'id' to reference capabilities
+            - Use record 'id', action 'id', rule 'id' to reference capabilities
             - Iteration can be expressed as `element in $key` in the description where $key is the iterated array
-            - If a type contradiction is unresolvable, output ERROR: <explanation>
         
         Be minimal: request only what's necessary.
         """;

@@ -16,6 +16,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Rulesage.Common\Rulesage.Common.fsproj"/>
+        <ProjectReference Include="..\Rulesage.Composition\Rulesage.Composition.csproj" />
         <ProjectReference Include="..\Rulesage.Graph\Rulesage.Graph.fsproj"/>
         <ProjectReference Include="..\Rulesage.Shared\Rulesage.Shared.csproj"/>
     </ItemGroup>
@@ -25,7 +26,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest"/>
+        <None Update="appsettings.example.json" CopyToOutputDirectory="PreserveNewest" />
+        <None Update="appsettings.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
     <ItemGroup>

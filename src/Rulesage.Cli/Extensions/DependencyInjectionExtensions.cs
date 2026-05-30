@@ -13,6 +13,7 @@ public static class ServiceCollectionExtensions
         {
             collection.AddScoped<NetworkHandler>();
             collection.AddScoped<RulesetHandler>();
+            collection.AddScoped<CommonHandler>();
             
             return collection;
         }

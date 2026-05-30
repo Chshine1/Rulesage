@@ -114,7 +114,7 @@ public class RuleRepository(
 
         cmd.Parameters.Add(new NpgsqlParameter { Value = new Vector(queryVector), DataTypeName = "vector" });
         // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
-        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = hierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+        cmd.Parameters.Add(new NpgsqlParameter<string[]> { Value = hierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = take, NpgsqlDbType = NpgsqlDbType.Integer });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = skip, NpgsqlDbType = NpgsqlDbType.Integer });
 

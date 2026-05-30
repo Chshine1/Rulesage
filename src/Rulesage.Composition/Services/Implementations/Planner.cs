@@ -8,22 +8,29 @@ public class Planner(ILlmService llm) : IPlanner
 {
     private const string SystemPrompt = 
         """
-        Construct a step-by-step plan of interpreting a subject into a standardized record tree, using the provided records, actions, rules, or delegating to a community.
-        - Records are structures constructable with named properties
-        - Actions are operations that take parameters and produce a result
-        - Rules are standardized interpretations, they interpret (possibly parameterized subjects), producing standardized record trees
-        - Communities are encapsulated rulesets with specific capability ranges of interpretation, which can be delegated an interpretation and produce standardized results
-        Think of the target as "What should X be?" and define X by composing records, actions, rules and community delegates.
-
-        Output semantically keyed steps. Prefer these patterns:
-        - record 'id', action 'id', rule 'id'
-        - with param = value
-        - $key for a previous step's result
-        - ref 'community-id' "Delegate subject to be interpreted"
-        - "plain string (natural language generation allowed)"
-        - The final step must deliver the required definition
-
-        A single step suffices if it directly answers the requirement.
+        Construct a step‑by‑step plan to interpret a subject into a record tree, using provided Records, Actions, Rules, or by delegating to a Community.
+        
+        - Records are structures with named properties.
+        - Actions are operations that take parameters and produce results.
+        - Rules are standard interpretations: they interpret a subject into part of the record tree.
+        - Communities are named interpretation capabilities. You can delegate a sub‑interpretation to them.
+        
+        Output steps with a semantic key, use patterns like:
+        - record <record-id> with param1 = value1, param2 = value2, ...
+        - result of <action-id> where ...
+        - interpretation of <rule-id> where ...
+        - sequential: apply one of the above element-wise, using each param = (value|elements in arrayValue) (multiple arrays are processed lockstep, yielding an array of results)
+        - delegate to <community‑id> "subject" (the subject is the noun to be interpreted which allows interpolation)
+          If no community fits, use: delegate to none "subject"
+        - just a value
+        
+        where values can be:
+        - $key, referring to the result of a previous step
+        - "a literal string", allowing {$key} interpolation
+        - an array [value1, value2, ...]
+        
+        Every step is purely declarative interpretation or transformation.
+        The final step must deliver the required subject, a single step suffices if it answers directly.
         """;
 
     private const string FewShotUser = 
@@ -31,21 +38,24 @@ public class Planner(ILlmService llm) : IPlanner
         Subject: "A CsFile node containing deduplicated and sorted service registrations for all service interfaces"
         
         Records:
-        - cs-file: A node representing a C# file, with properties: namespace, usings, lines
+        - cs-file: A C# file node with namespace, usings, lines
         
         Actions:
-        - format-registration-line: Takes an interface name and returns a service registration statement as a string
+        - format-line: Formats an interface name into a registration statement
         
         Rules:
-        - all-service-interfaces: This is the array of all service interface types
+        - all-interfaces: Interprets the set of all service interfaces
         """;
 
     private const string FewShotAssistant = 
         """
-        allServices: Get all service interfaces, satisfying rule 'all-service-interfaces'
-        registrationLines: Produce a sequence of registration lines, each as the result of action 'format-registration-line' with interfaceName = an element of $allServices
-        sortedLines: "The lines in $registrationLines deduplicated and sorted alphabetically."
-        csFile: Construct node 'cs-file' with namespace = "MyApp.Services", usings = ["Microsoft.Extensions.DependencyInjection"], lines = $sortedLines
+        all: apply 'all-interfaces'
+        lines: sequence of action 'format-line' each with name = elements in $all
+        sortedLines: delegate to none "the lines in {$lines} deduplicated and sorted alphabetically"
+        csFile: record 'cs-file' with
+          namespace = "MyApp.Services",
+          usings = ["Microsoft.Extensions.DependencyInjection"],
+          lines = $sortedLines
         """;
     
     public async Task<string> PlanAsync(
@@ -86,8 +96,8 @@ public class Planner(ILlmService llm) : IPlanner
         var messages = new LlmMessage[]
         {
             new() { Role = LlmMessage.MessageRole.System, Content = SystemPrompt },
-            new() { Role = LlmMessage.MessageRole.User, Content = FewShotUser },
-            new() { Role = LlmMessage.MessageRole.Assistant, Content = FewShotAssistant },
+            // new() { Role = LlmMessage.MessageRole.User, Content = FewShotUser },
+            // new() { Role = LlmMessage.MessageRole.Assistant, Content = FewShotAssistant },
             new() { Role = LlmMessage.MessageRole.User, Content = userPrompt }
         };
 

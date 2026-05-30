@@ -30,6 +30,7 @@ public static class ServiceCollectionExtensions
             collection.AddSingleton(jsonOptions);
 
             collection.Configure<TextCleanerConfig>(config.GetSection("TextCleaner"));
+            collection.Configure<LlmConfig>(config.GetSection("Llm"));
 
             collection.AddSingleton<Tokenizer>(WordPieceTokenizer.Create(vocabPath,
                 new WordPieceOptions
@@ -49,6 +50,8 @@ public static class ServiceCollectionExtensions
             collection.AddSingleton<IEmbeddingService>(sp =>
                 new OnnxEmbeddingService(sp.GetRequiredService<Tokenizer>(), onnxModelPath));
             collection.AddSingleton<ILlmService, OpenAiCompatibleService>();
+            
+            collection.AddSingleton(new HttpClient());
 
             collection.AddSingleton(sp =>
             {

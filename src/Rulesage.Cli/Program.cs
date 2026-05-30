@@ -2,8 +2,10 @@
 using JetBrains.Annotations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Rulesage.Cli.Commands;
 using Rulesage.Cli.Commands.Network;
 using Rulesage.Cli.Extensions;
+using Rulesage.Composition.Extensions;
 using Rulesage.Graph.Extensions;
 using Rulesage.Shared.Extensions;
 using RulesetCommands = Rulesage.Cli.Commands.Ruleset.RulesetCommands;
@@ -36,10 +38,12 @@ public class Program
                 services.AddSharedModule(dbConnectionString, Path.GetFullPath(onnxRelative, basePath),
                     Path.GetFullPath(vocabRelative, basePath), context.Configuration);
                 services.AddGraphModule(context.Configuration);
+                services.AddCompositionModule();
             })
             .Build();
 
         var rootCommand = new RootCommand("Rulesage test");
+        rootCommand.Subcommands.Add(CommonCommands.CreatePlanCommand(host.Services));
         
         var rulesetCommand = new Command("ruleset");
         rulesetCommand.Subcommands.Add(RulesetCommands.CreateInitCommand(host.Services));

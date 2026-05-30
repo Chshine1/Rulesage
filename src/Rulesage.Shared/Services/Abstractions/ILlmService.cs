@@ -1,13 +1,14 @@
 ﻿using System.Text.Json.Serialization;
+using JetBrains.Annotations;
 
 namespace Rulesage.Shared.Services.Abstractions;
 
+[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
 public class LlmConfig
 {
     public required string Endpoint { get; init; }
     public required string ApiKey { get; init; }
     public required string Model { get; init; }
-    public required int TimeoutSeconds { get; init; }
 }
 
 public class LlmMessage
