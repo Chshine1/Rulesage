@@ -3,27 +3,23 @@ using JetBrains.Annotations;
 
 namespace Rulesage.Shared.Services.Abstractions;
 
-[UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.WithMembers)]
-public class LlmConfig
-{
-    public required string Endpoint { get; init; }
-    public required string ApiKey { get; init; }
-    public required string Model { get; init; }
-}
-
 public class LlmMessage
 {
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum MessageRole
     {
         [JsonStringEnumMemberName("system")] System,
         [JsonStringEnumMemberName("user")] User,
-        [JsonStringEnumMemberName("assistant")] Assistant
+
+        [JsonStringEnumMemberName("assistant")]
+        Assistant
     }
-    
+
     public required MessageRole Role { get; init; }
     public required string Content { get; init; }
 }
 
+[UsedImplicitly(ImplicitUseKindFlags.Access, ImplicitUseTargetFlags.WithMembers)]
 public class LlmRequest
 {
     public required string Model { get; init; }
@@ -35,7 +31,7 @@ public class LlmRequest
 public class LlmResponse
 {
     public required string Content { get; init; }
-    public required string FinishReason { get; init; }
+    public string? FinishReason { get; init; }
 }
 
 public interface ILlmService
