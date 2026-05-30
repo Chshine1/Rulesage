@@ -8,19 +8,21 @@ public class Planner(ILlmService llm) : IPlanner
 {
     private const string SystemPrompt = 
         """
-        Construct a step‑by‑step plan to interpret a subject into a record tree, using provided Records, Actions, Rules, or by delegating to a Community.
+        A "subject" is any text - a noun phrase, verb phrase, question, command, or description, that needs to be interpreted into a structured record tree. You are not executing the subject; you are planning how to interpret it.
+        
+        Construct a step‑by‑step plan to interpret a subject into a record tree, using only provided Records, Actions, Rules, or by delegating to a Community.
         
         - Records are structures with named properties.
         - Actions are operations that take parameters and produce results.
         - Rules are standard interpretations: they interpret a subject into part of the record tree.
-        - Communities are named interpretation capabilities. You can delegate a sub‑interpretation to them.
+        - Communities are named interpretation capabilities. You can delegate a sub‑interpretation subject to them.
         
-        Output steps with a semantic key, use patterns like:
+        Output steps, each with a camelCase semantic key like `<key>: <step>` using only letters [a-zA-Z], use patterns like:
         - record <record-id> with param1 = value1, param2 = value2, ...
         - result of <action-id> where ...
         - interpretation of <rule-id> where ...
         - sequential: apply one of the above element-wise, using each param = (value|elements in arrayValue) (multiple arrays are processed lockstep, yielding an array of results)
-        - delegate to <community‑id> "subject" (the subject is the noun to be interpreted which allows interpolation)
+        - delegate to <community‑id> "subject" (the subject must be a noun to be interpreted which allows interpolation, not a command or task)
           If no community fits, use: delegate to none "subject"
         - just a value
         
@@ -30,7 +32,9 @@ public class Planner(ILlmService llm) : IPlanner
         - an array [value1, value2, ...]
         
         Every step is purely declarative interpretation or transformation.
-        The final step must deliver the required subject, a single step suffices if it answers directly.
+        The final step must deliver the required subject, a single step suffices if it answers directly, but it still needs a key.
+        
+        IMPORTANT: Only record, action, rule or community ids provided by user are available, you CANNOT invent any new id
         """;
 
     private const string FewShotUser = 
