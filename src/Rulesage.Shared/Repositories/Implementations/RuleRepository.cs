@@ -77,13 +77,23 @@ public class RuleRepository(
         });
     }
 
-    public async Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(string community, float[] queryVector,
+    public async Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(string contextCommunity, float[] queryVector,
         int skip, int take,
         CancellationToken cancellationToken = default)
     {
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(cancellationToken);
 
+        var sections = contextCommunity.Split('.');
+        var hierarchy = new string[sections.Length + 1];
+        var sectionSum = "";
+        hierarchy[0] = "";
+        for (var i = 0; i < sections.Length; i++)
+        {
+            sectionSum += sections[i];
+            hierarchy[i + 1] = sectionSum;
+        }
+        
         await using var cmd =
             new NpgsqlCommand(
                 """
@@ -95,7 +105,7 @@ public class RuleRepository(
                     must_be,
                     (annotation_embedding <=> $1) as distance
                 from rules
-                where community_id = $2
+                where community_id = any($2)
                 order by distance
                 limit $3 offset $4;
                 """,
@@ -103,7 +113,8 @@ public class RuleRepository(
             );
 
         cmd.Parameters.Add(new NpgsqlParameter { Value = new Vector(queryVector), DataTypeName = "vector" });
-        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = community, NpgsqlDbType = NpgsqlDbType.Text });
+        // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = hierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = take, NpgsqlDbType = NpgsqlDbType.Integer });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = skip, NpgsqlDbType = NpgsqlDbType.Integer });
 
@@ -131,7 +142,7 @@ public class RuleRepository(
             var mustBe = JsonSerializer.Deserialize<ValueExpr>(mustBeJson, jsonOptions);
 
             return (
-                new RuleExpr(id, community, annotation, fors, givens, mustBe),
+                new RuleExpr(id, contextCommunity, annotation, fors, givens, mustBe),
                 1f - (float)r.GetDouble(distanceOrdinal)
             );
         });

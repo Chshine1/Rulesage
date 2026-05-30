@@ -25,20 +25,22 @@ public class CommunityRepository(NpgsqlDataSource dataSource) : ICommunityReposi
         int take,
         CancellationToken cancellationToken = default)
     {
+        if (contextCommunity.Length == 0) return [];
+        
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(cancellationToken);
 
         var sections = contextCommunity.Split('.');
-        var hierarchy = new string[sections.Length];
+        var parentHierarchy = new string[sections.Length + 1];
         var sectionSum = "";
-        hierarchy[0] = "";
+        parentHierarchy[0] = "";
         for (var i = 0; i < sections.Length; i++)
         {
             sectionSum += sections[i];
-            hierarchy[i + 1] = sectionSum;
+            parentHierarchy[i + 1] = sectionSum;
         }
 
-        var hierarchyIds = hierarchy[1..];
+        var excludeHierarchy = parentHierarchy[1..];
 
         await using var cmd = new NpgsqlCommand(
             """
@@ -58,9 +60,9 @@ public class CommunityRepository(NpgsqlDataSource dataSource) : ICommunityReposi
         cmd.Parameters.Add(new NpgsqlParameter<float[]>
             { Value = queryVector, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Real });
         cmd.Parameters.Add(new NpgsqlParameter<string[]>
-            { Value = hierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+            { Value = parentHierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter<string[]>
-            { Value = hierarchyIds, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+            { Value = excludeHierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         // ReSharper restore BitwiseOperatorOnEnumWithoutFlags
 
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = take });

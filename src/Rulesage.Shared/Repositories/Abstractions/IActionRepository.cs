@@ -6,7 +6,7 @@ public interface IActionRepository: IDocumentRepository
 {
     Task<IEnumerable<ActionExpr>> FindByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default);
     
-    Task<IEnumerable<(ActionExpr, float)>> FindOrderByCosineDistanceAsync(string community, float[] queryVector, int skip, int take,
+    Task<IEnumerable<(ActionExpr, float)>> FindOrderByCosineDistanceAsync(string contextCommunity, float[] queryVector, int skip, int take,
         CancellationToken cancellationToken = default);
     
     Task<bool> SaveAsync(IEnumerable<ActionExpr> actions, CancellationToken cancellationToken = default);

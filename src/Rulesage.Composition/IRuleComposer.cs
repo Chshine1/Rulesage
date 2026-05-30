@@ -6,6 +6,8 @@ public interface IRuleComposer
 {
     Task<RuleExpr> ComposeAsync(
         string nlStructure,
-        TypeExpr? expectedType = null,
+        CancellationToken cancellationToken = default);
+
+    Task<RuleExpr> ComposeWithConstrainAsync(string nlStructure, TypeExpr expectedType, string contextCommunity,
         CancellationToken cancellationToken = default);
 }

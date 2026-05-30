@@ -1,15 +1,9 @@
-﻿@"The community for common types/actions/rules"
-community common
-
-#common
-@"A generic tuple of two values"
+﻿@"A generic tuple of two values"
 record Tuple<t1, t2> with val1(t1), val2(t2)
 
-#common
 @"Group an array of objects by equivalance of a given key, returns the dictionary of groups"
 action groupBy<t> on array(t[]), groupKey(literal) returns record Tuple<literal, t[]>[]
 
-#common
 @"Find a dictionary value of the given key"
 action findInDictionary<tk, tv> on dictionary(record Tuple<tk, tv>[]), key(tk) returns tv
 
@@ -83,6 +77,7 @@ community record
 record RecordDef with
   annotation(literal), id(literal), fields(record Tuple<literal, record TypeSpec>[])
 
+#meta.record.ignore
 @"A record definition intent with a string name, a name-description dictionary of generic parameters, and a (name, expected type definition) dictionary of fields."
 record RecordDefIntent with
   name(literal), genericParams(record Tuple<literal, literal>[]), fields(record Tuple<literal, literal>[])

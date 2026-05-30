@@ -61,9 +61,9 @@ public class Planner(ILlmService llm) : IPlanner
             var rulesArray = string.Join("\n", context.Rules.Select(r => $"- {r.Id}: {r.Annotation}"));
             parts.Add($"Available rules:\n{rulesArray}");
         }
-        if (context.Nodes.Length != 0)
+        if (context.Records.Length != 0)
         {
-            var nodesArray = string.Join("\n", context.Nodes.Select(n => $"- {n.Id}: {n.Annotation}"));
+            var nodesArray = string.Join("\n", context.Records.Select(n => $"- {n.Id}: {n.Annotation}"));
             parts.Add($"Available nodes:\n{nodesArray}");
         }
         if (context.Actions.Length != 0)

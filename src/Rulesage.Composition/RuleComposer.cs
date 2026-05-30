@@ -12,10 +12,19 @@ public class RuleComposer(
 {
     public async Task<RuleExpr> ComposeAsync(
         string nlStructure,
-        TypeExpr? expectedType = null,
         CancellationToken cancellationToken = default)
     {
-        var context = await contextBuilder.BuildAsync(nlStructure, cancellationToken);
+        var context = await contextBuilder.BuildAsync("", nlStructure, cancellationToken);
+        var plan = await planner.PlanAsync(nlStructure, context, cancellationToken);
+        var annotatedPlan = await typeAnnotator.AnnotateAsync(nlStructure, plan, cancellationToken);
+
+        return await gcd.DecodeAsync(nlStructure, annotatedPlan, context, cancellationToken);
+    }
+
+    public async Task<RuleExpr> ComposeWithConstrainAsync(string nlStructure, TypeExpr expectedType, string contextCommunity,
+        CancellationToken cancellationToken = default)
+    {
+        var context = await contextBuilder.BuildAsync(contextCommunity, nlStructure, cancellationToken);
         var plan = await planner.PlanAsync(nlStructure, context, cancellationToken);
         var annotatedPlan = await typeAnnotator.AnnotateAsync(nlStructure, plan, cancellationToken);
 
