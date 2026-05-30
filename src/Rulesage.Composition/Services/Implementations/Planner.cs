@@ -8,17 +8,19 @@ public class Planner(ILlmService llm) : IPlanner
 {
     private const string SystemPrompt = 
         """
-        Transform a structure to be strictly defined into a step-by-step plan using the provided rules, nodes, and actions.
-        - Rules express definitions: "(For <parameters>,) ... must be ..."
-        - Nodes are structures you can construct with named properties
+        Construct a step-by-step plan of interpreting a subject into a standardized record tree, using the provided records, actions, rules, or delegating to a community.
+        - Records are structures constructable with named properties
         - Actions are operations that take parameters and produce a result
-        Think of the target structure as "What should X be?" and define X by composing rules, nodes and actions.
+        - Rules are standardized interpretations, they interpret (possibly parameterized subjects), producing standardized record trees
+        - Communities are encapsulated rulesets with specific capability ranges of interpretation, which can be delegated an interpretation and produce standardized results
+        Think of the target as "What should X be?" and define X by composing records, actions, rules and community delegates.
 
         Output semantically keyed steps. Prefer these patterns:
-        - rule 'id', node 'id', action 'id'
+        - record 'id', action 'id', rule 'id'
         - with param = value
-        - $key for a previous step's output
-        - "natural language" for parts without a rule/node/action
+        - $key for a previous step's result
+        - ref 'community-id' "Delegate subject to be interpreted"
+        - "plain string (natural language generation allowed)"
         - The final step must deliver the required definition
 
         A single step suffices if it directly answers the requirement.
@@ -26,16 +28,16 @@ public class Planner(ILlmService llm) : IPlanner
 
     private const string FewShotUser = 
         """
-        Target structure: "A CsFile node containing deduplicated and sorted service registrations for all service interfaces"
+        Subject: "A CsFile node containing deduplicated and sorted service registrations for all service interfaces"
         
-        Available rules:
-        - all-service-interfaces: This is the array of all service interface types
-        
-        Available nodes:
+        Records:
         - cs-file: A node representing a C# file, with properties: namespace, usings, lines
         
-        Available actions:
+        Actions:
         - format-registration-line: Takes an interface name and returns a service registration statement as a string
+        
+        Rules:
+        - all-service-interfaces: This is the array of all service interface types
         """;
 
     private const string FewShotAssistant = 
@@ -47,29 +49,36 @@ public class Planner(ILlmService llm) : IPlanner
         """;
     
     public async Task<string> PlanAsync(
-        string nlStructure,
+        string subject,
         CompositionContext context,
         CancellationToken cancellationToken = default)
     {
         var parts = new List<string>
         {
-            $"Target structure: {nlStructure}"
+            $"Subject: {subject}"
         };
 
-        if (context.Rules.Length != 0)
-        {
-            var rulesArray = string.Join("\n", context.Rules.Select(r => $"- {r.Id}: {r.Annotation}"));
-            parts.Add($"Available rules:\n{rulesArray}");
-        }
         if (context.Records.Length != 0)
         {
             var nodesArray = string.Join("\n", context.Records.Select(n => $"- {n.Id}: {n.Annotation}"));
-            parts.Add($"Available nodes:\n{nodesArray}");
+            parts.Add($"Records:\n{nodesArray}");
         }
         if (context.Actions.Length != 0)
         {
             var actionsArray = string.Join("\n", context.Actions.Select(a => $"- {a.Id}: {a.Annotation}"));
-            parts.Add($"Available actions:\n{actionsArray}");
+            parts.Add($"Actions:\n{actionsArray}");
+        }
+        if (context.Rules.Length != 0)
+        {
+            var rulesArray = string.Join("\n", context.Rules.Select(r => $"- {r.Id}: {r.Annotation}"));
+            parts.Add($"Rules:\n{rulesArray}");
+        }
+
+        if (context.Communities.Length != 0)
+        {
+            var communitiesArray = string.Join("\n",
+                context.Communities.Select(r => $"- {string.Concat(r.Sections)}: {r.Annotation}"));
+            parts.Add($"Communities:\n{communitiesArray}");
         }
 
         var userPrompt = string.Join("\n", parts);

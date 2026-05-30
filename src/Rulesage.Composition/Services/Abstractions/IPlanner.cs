@@ -5,7 +5,7 @@ namespace Rulesage.Composition.Services.Abstractions;
 public interface IPlanner
 {
     Task<string> PlanAsync(
-        string nlStructure,
+        string subject,
         CompositionContext context,
         CancellationToken cancellationToken = default);
 }
