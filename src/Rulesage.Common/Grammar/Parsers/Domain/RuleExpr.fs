@@ -9,6 +9,7 @@ type GivenExpr = { Key: string; Value: ValueExpr }
 type RuleExpr =
     {
         Id: Identifier
+        Ignore: bool
         Community: string
         Annotation: string
         Fors: Map<string, ParamExpr>
@@ -19,6 +20,7 @@ type RuleExpr =
 type RecordExpr =
     {
         Id: Identifier
+        Ignore: bool
         Community: string
         Annotation: string
         GenericParams: string list
@@ -28,6 +30,7 @@ type RecordExpr =
 type ActionExpr =
     {
         Id: Identifier
+        Ignore: bool
         Community: string
         Annotation: string
         GenericParams: string list
@@ -80,7 +83,7 @@ module Rule =
     let private pMustBeExpr: Parser<ValueExpr> =
         s1 >>. skipString "must be" >>. s >>. skipChar ':' >>. s >>. pValueExpr
 
-    let pRule (community: string) (annotation: string) : Parser<RuleExpr> =
+    let pRule (ignore: bool) (community: string) (annotation: string) : Parser<RuleExpr> =
         skipString "rule" .>> s1 >>. pId
         .>>. pParamBlock "for"
         .>>. pGivenBlock
@@ -88,6 +91,7 @@ module Rule =
         |>> fun (((i, fs), gs), m) ->
             {
                 Id = i
+                Ignore = ignore
                 Community = community
                 Annotation = annotation
                 Fors = fs |> Seq.map (fun f -> f.Key, f) |> Map.ofSeq
@@ -95,11 +99,12 @@ module Rule =
                 MustBe = m
             }
 
-    let pRecord (community: string) (annotation: string) : Parser<RecordExpr> =
+    let pRecord (ignore: bool) (community: string) (annotation: string) : Parser<RecordExpr> =
         skipString "record" .>> s1 >>. pGenericId .>>. pParamBlock "with"
         |>> fun ((i, gs), fs) ->
             {
                 Id = i
+                Ignore = ignore
                 Community = community
                 Annotation = annotation
                 GenericParams = gs
@@ -109,13 +114,14 @@ module Rule =
     let private pReturnsExpr: Parser<TypeExpr> =
         s1 >>. skipString "returns" >>. s >>. pTypeExpr
 
-    let pAction (community: string) (annotation: string) : Parser<ActionExpr> =
+    let pAction (ignore: bool) (community: string) (annotation: string) : Parser<ActionExpr> =
         skipString "action" .>> s1 >>. pGenericId
         .>>. pParamBlock "on"
         .>>. pReturnsExpr
         |>> fun (((i, gs), fs), r) ->
             {
                 Id = i
+                Ignore = ignore
                 Community = community
                 Annotation = annotation
                 GenericParams = gs

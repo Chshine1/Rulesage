@@ -51,6 +51,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
         var idOrdinal = reader.GetOrdinal("id");
+        var ignoreOrdinal = reader.GetOrdinal("ignore");
         var communityOrdinal = reader.GetOrdinal("community_id");
         var annotationOrdinal = reader.GetOrdinal("annotation");
         var genericParamsOrdinal = reader.GetOrdinal("generic_params");
@@ -61,6 +62,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         return ReadToList(reader, r =>
         {
             var id = r.GetString(idOrdinal);
+            var ignore = r.GetBoolean(ignoreOrdinal);
             var community = r.GetString(communityOrdinal);
             var annotation = r.GetString(annotationOrdinal);
             var genericParamsJson = r.GetString(genericParamsOrdinal);
@@ -75,7 +77,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
             var returns =
                 JsonSerializer.Deserialize<TypeExpr>(returnsJson, jsonOptions);
 
-            return new ActionExpr(id, community, annotation, genericParams, fors, returns, script);
+            return new ActionExpr(id, ignore, community, annotation, genericParams, fors, returns, script);
         });
     }
 
@@ -109,7 +111,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
                     script,
                     (annotation_embedding <=> $1) as distance
                 from actions
-                where community_id = any($2)
+                where community_id = any($2) and ignore = false
                 order by distance
                 limit $3 offset $4;
                 """,
@@ -150,7 +152,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
                 JsonSerializer.Deserialize<TypeExpr>(returnsJson, jsonOptions);
 
             return (
-                new ActionExpr(id, contextCommunity, annotation, genericParams, fors, returns, script),
+                new ActionExpr(id, false, contextCommunity, annotation, genericParams, fors, returns, script),
                 1f - (float)r.GetDouble(distanceOrdinal)
             );
         });
@@ -165,6 +167,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         var count = actionsArray.Length;
 
         var ids = new string[count];
+        var ignores = new bool[count];
         var communities = new string[count];
         var annotations = new string[count];
         var genericParams = new FSharpList<string>[count];
@@ -176,6 +179,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         {
             var r = actionsArray[i];
             ids[i] = r.Id;
+            ignores[i] = r.Ignore;
             communities[i] = r.Community;
             annotations[i] = r.Annotation;
             genericParams[i] = r.GenericParams;
@@ -191,18 +195,19 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         await using var cmd =
             new NpgsqlCommand(
                 """
-                insert into actions (id, community_id, annotation, generic_params, fors, returns, script)
-                select src.id, src.community, src.annotation, e1.generic_params, e2.fors, e3.returns, src.script
-                from unnest($1, $2, $3, $7) with ordinality as src(id, community, annotation, script, idx)
-                join lateral jsonb_array_elements($4) with ordinality as e1(generic_params, idx1) on src.idx = idx1
-                join lateral jsonb_array_elements($5) with ordinality as e2(fors, idx2) on src.idx = idx2
-                join lateral jsonb_array_elements($6) with ordinality as e3(returns, idx3) on src.idx = idx3
+                insert into actions (id, ignore, community_id, annotation, generic_params, fors, returns, script)
+                select src.id, src.ignore, src.community, src.annotation, e1.generic_params, e2.fors, e3.returns, src.script
+                from unnest($1, $2, $3, $4, $8) with ordinality as src(id, ignore, community, annotation, script, idx)
+                join lateral jsonb_array_elements($5) with ordinality as e1(generic_params, idx1) on src.idx = idx1
+                join lateral jsonb_array_elements($6) with ordinality as e2(fors, idx2) on src.idx = idx2
+                join lateral jsonb_array_elements($7) with ordinality as e3(returns, idx3) on src.idx = idx3
                 """,
                 conn
             );
 
         // ReSharper disable BitwiseOperatorOnEnumWithoutFlags
         cmd.Parameters.Add(new NpgsqlParameter { Value = ids, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+        cmd.Parameters.Add(new NpgsqlParameter { Value = ignores, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Boolean });
         cmd.Parameters.Add(new NpgsqlParameter
             { Value = communities, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter

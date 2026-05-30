@@ -1,5 +1,6 @@
 ﻿using Npgsql;
 using NpgsqlTypes;
+using Pgvector;
 using Rulesage.Common.Grammar.Ast;
 using Rulesage.Shared.Repositories.Abstractions;
 
@@ -25,8 +26,6 @@ public class CommunityRepository(NpgsqlDataSource dataSource) : ICommunityReposi
         int take,
         CancellationToken cancellationToken = default)
     {
-        if (contextCommunity.Length == 0) return [];
-        
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(cancellationToken);
 
@@ -56,9 +55,8 @@ public class CommunityRepository(NpgsqlDataSource dataSource) : ICommunityReposi
             """,
             conn);
 
+        cmd.Parameters.Add(new NpgsqlParameter { Value = new Vector(queryVector), DataTypeName = "vector" });
         // ReSharper disable BitwiseOperatorOnEnumWithoutFlags
-        cmd.Parameters.Add(new NpgsqlParameter<float[]>
-            { Value = queryVector, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Real });
         cmd.Parameters.Add(new NpgsqlParameter<string[]>
             { Value = parentHierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter<string[]>
@@ -116,7 +114,8 @@ public class CommunityRepository(NpgsqlDataSource dataSource) : ICommunityReposi
 
         // ReSharper disable BitwiseOperatorOnEnumWithoutFlags
         cmd.Parameters.Add(new NpgsqlParameter { Value = ids, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
-        cmd.Parameters.Add(new NpgsqlParameter { Value = parentIds, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+        cmd.Parameters.Add(new NpgsqlParameter
+            { Value = parentIds, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter
             { Value = annotations, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         // ReSharper restore BitwiseOperatorOnEnumWithoutFlags

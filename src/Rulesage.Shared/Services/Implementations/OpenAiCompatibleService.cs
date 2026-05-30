@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -58,6 +59,12 @@ public class OpenAiCompatibleService : ILlmService
                 Model = _config.Model,
                 Messages = messageArray
             };
+            
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                var requestJson = JsonSerializer.Serialize(request);
+                _logger.LogDebug("LLM request body: {RequestBody}", requestJson);
+            }
 
             HttpResponseMessage httpResponse;
             try
@@ -149,6 +156,14 @@ public class OpenAiCompatibleService : ILlmService
                 _logger.LogInformation(
                     "LLM call succeeded. FinishReason={FinishReason}, ElapsedMs={ElapsedMs}",
                     finishReason, stopwatch.ElapsedMilliseconds);
+                
+                if (openAiResponse.Usage != null){
+                    _logger.LogInformation(
+                        "LLM token usage: Prompt={PromptTokens}, Completion={CompletionTokens}, Total={TotalTokens}",
+                        openAiResponse.Usage.PromptTokens,
+                        openAiResponse.Usage.CompletionTokens,
+                        openAiResponse.Usage.TotalTokens);
+                }
             }
 
             return new LlmResponse
@@ -170,12 +185,21 @@ public class OpenAiCompatibleService : ILlmService
     private class OpenAiResponse
     {
         public required List<Choice> Choices { get; init; }
+        public UsageInfo? Usage { get; init; }
 
         [UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.Members)]
         public class Choice
         {
             public required LlmMessage Message { get; init; }
             public string? FinishReason { get; init; }
+        }
+        
+        [UsedImplicitly(ImplicitUseKindFlags.Assign, ImplicitUseTargetFlags.Members)]
+        public class UsageInfo
+        {
+            public int PromptTokens { get; init; }
+            public int CompletionTokens { get; init; }
+            public int TotalTokens { get; init; }
         }
     }
 }

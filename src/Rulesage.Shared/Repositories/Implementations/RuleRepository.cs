@@ -34,6 +34,7 @@ public class RuleRepository(
                 """
                 select
                     id,
+                    ignore,
                     community_id,
                     annotation,
                     fors,
@@ -52,6 +53,7 @@ public class RuleRepository(
         await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
         var idOrdinal = reader.GetOrdinal("id");
+        var ignoreOrdinal = reader.GetOrdinal("ignore");
         var communityOrdinal = reader.GetOrdinal("community_id");
         var annotationOrdinal = reader.GetOrdinal("annotation");
         var forsOrdinal = reader.GetOrdinal("fors");
@@ -61,6 +63,7 @@ public class RuleRepository(
         return ReadToList(reader, r =>
         {
             var id = r.GetString(idOrdinal);
+            var ignore = r.GetBoolean(ignoreOrdinal);
             var community = r.GetString(communityOrdinal);
             var annotation = r.GetString(annotationOrdinal);
             var forsJson = r.GetString(forsOrdinal);
@@ -73,11 +76,12 @@ public class RuleRepository(
                 JsonSerializer.Deserialize<FSharpMap<string, GivenExpr>>(givensJson, jsonOptions);
             var mustBe = JsonSerializer.Deserialize<ValueExpr>(mustBeJson, jsonOptions);
 
-            return new RuleExpr(id, community, annotation, fors, givens, mustBe);
+            return new RuleExpr(id, ignore, community, annotation, fors, givens, mustBe);
         });
     }
 
-    public async Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(string contextCommunity, float[] queryVector,
+    public async Task<IEnumerable<(RuleExpr, float)>> FindOrderByCosineDistanceAsync(string contextCommunity,
+        float[] queryVector,
         int skip, int take,
         CancellationToken cancellationToken = default)
     {
@@ -93,7 +97,7 @@ public class RuleRepository(
             sectionSum += sections[i];
             hierarchy[i + 1] = sectionSum;
         }
-        
+
         await using var cmd =
             new NpgsqlCommand(
                 """
@@ -105,7 +109,7 @@ public class RuleRepository(
                     must_be,
                     (annotation_embedding <=> $1) as distance
                 from rules
-                where community_id = any($2)
+                where community_id = any($2) and ignore = false
                 order by distance
                 limit $3 offset $4;
                 """,
@@ -114,7 +118,8 @@ public class RuleRepository(
 
         cmd.Parameters.Add(new NpgsqlParameter { Value = new Vector(queryVector), DataTypeName = "vector" });
         // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
-        cmd.Parameters.Add(new NpgsqlParameter<string[]> { Value = hierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+        cmd.Parameters.Add(new NpgsqlParameter<string[]>
+            { Value = hierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = take, NpgsqlDbType = NpgsqlDbType.Integer });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = skip, NpgsqlDbType = NpgsqlDbType.Integer });
 
@@ -142,7 +147,7 @@ public class RuleRepository(
             var mustBe = JsonSerializer.Deserialize<ValueExpr>(mustBeJson, jsonOptions);
 
             return (
-                new RuleExpr(id, contextCommunity, annotation, fors, givens, mustBe),
+                new RuleExpr(id, false, contextCommunity, annotation, fors, givens, mustBe),
                 1f - (float)r.GetDouble(distanceOrdinal)
             );
         });
@@ -157,6 +162,7 @@ public class RuleRepository(
         var count = rulesArray.Length;
 
         var ids = new string[count];
+        var ignores = new bool[count];
         var communities = new string[count];
         var annotations = new string[count];
         var fors = new FSharpMap<string, ParamExpr>[count];
@@ -167,6 +173,7 @@ public class RuleRepository(
         {
             var r = rulesArray[i];
             ids[i] = r.Id;
+            ignores[i] = r.Ignore;
             communities[i] = r.Community;
             annotations[i] = r.Annotation;
             fors[i] = r.Fors;
@@ -181,18 +188,20 @@ public class RuleRepository(
         await using var cmd =
             new NpgsqlCommand(
                 """
-                insert into rules (id, community_id, annotation, fors, givens, must_be)
-                select src.id, src.community, src.annotation, e1.fors, e2.givens, e3.must_be
-                from unnest($1, $2, $3) with ordinality as src(id, community, annotation, idx)
-                join lateral jsonb_array_elements($4) with ordinality as e1(fors, idx1) on src.idx = idx1
-                join lateral jsonb_array_elements($5) with ordinality as e2(givens, idx2) on src.idx = idx2
-                join lateral jsonb_array_elements($6) with ordinality as e3(must_be, idx3) on src.idx = idx3
+                insert into rules (id, ignore, community_id, annotation, fors, givens, must_be)
+                select src.id, src.ignore, src.community, src.annotation, e1.fors, e2.givens, e3.must_be
+                from unnest($1, $2, $3, $4) with ordinality as src(id, ignore, community, annotation, idx)
+                join lateral jsonb_array_elements($5) with ordinality as e1(fors, idx1) on src.idx = idx1
+                join lateral jsonb_array_elements($6) with ordinality as e2(givens, idx2) on src.idx = idx2
+                join lateral jsonb_array_elements($7) with ordinality as e3(must_be, idx3) on src.idx = idx3
                 """,
                 conn
             );
 
         // ReSharper disable BitwiseOperatorOnEnumWithoutFlags
         cmd.Parameters.Add(new NpgsqlParameter { Value = ids, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+        cmd.Parameters.Add(new NpgsqlParameter
+            { Value = ignores, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Boolean });
         cmd.Parameters.Add(new NpgsqlParameter
             { Value = communities, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter

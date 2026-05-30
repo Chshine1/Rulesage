@@ -1,5 +1,6 @@
 ﻿namespace Rulesage.Common
 
+open System
 open FParsec
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
@@ -26,11 +27,17 @@ module DocumentParser =
         opt (skipChar '#' >>. pCommunityTag .>> spaces1) .>>. pAnnotation .>> spaces
         >>= fun (oCommunity, annotation) ->
             let community = oCommunity |> Option.defaultValue ""
+            let parts = community.Split('.')
+            let lastIsIgnore = parts.Length > 0 && parts[parts.Length - 1] = "ignore"
+            let newCommunity =
+                if lastIsIgnore then
+                    String.Join(".", parts[.. parts.Length - 2])
+                else community
             choice
                 [
-                    pRule community annotation |>> RuleDef
-                    pRecord community annotation |>> RecordDef
-                    pAction community annotation |>> ActionDef
+                    pRule lastIsIgnore newCommunity annotation |>> RuleDef
+                    pRecord lastIsIgnore newCommunity annotation |>> RecordDef
+                    pAction lastIsIgnore newCommunity annotation |>> ActionDef
                     pCommunity community annotation |>> CommunityDef
                 ]
 
