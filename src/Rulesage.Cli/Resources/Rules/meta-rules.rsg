@@ -1,7 +1,7 @@
 ﻿@"A generic tuple of two values"
 record Tuple<t1, t2> with val1(t1), val2(t2)
 
-@"Group an array of objects by equivalance of a given key, returns the dictionary of groups"
+@"Group an array of objects by equivalence of a given key, returns the dictionary of groups as an array of Tuple<literal, t[]>."
 action groupBy<t> on array(t[]), groupKey(literal) returns record Tuple<literal, t[]>[]
 
 @"Find a dictionary value of the given key"
@@ -9,11 +9,11 @@ action findInDictionary<tk, tv> on dictionary(record Tuple<tk, tv>[]), key(tk) r
 
 
 
-@"Some test meta 1"
+@"Meta-level definitions: ruleset querying, type interpretation, record definitions."
 community meta
 
 #meta
-@"Whatever"
+@"Community for querying and describing rule sets. Contains records and actions for retrieving units by similarity."
 community ruleset
 
 #meta.ruleset
@@ -22,7 +22,7 @@ record UnitSummary with
   id(literal), unitType(literal), annotation(literal)
 
 #meta.ruleset
-@"A collection of ids (of records/rules/actions, respectively), which describes a query against the quleset requiring units of these ids"
+@"A collection of ids (of records/rules/actions, respectively), which describes a query against the ruleset requiring units of these ids."
 record RulesetQuery with
   recordIds(literal[]),
   ruleIds(literal[]),
@@ -35,7 +35,7 @@ action retrieveSimilarUnits on query(literal) returns record UnitSummary[]
 
 
 #meta
-@"Nope"
+@"Community for interpreting natural-language type descriptions into TypeSpec records."
 community type
 
 #meta.type
@@ -69,11 +69,11 @@ must be:
 
 
 #meta
-@"Maybe this would work"
+@"Community for interpreting natural-language descriptions of record types into RecordDef."
 community record
 
 #meta.record
-@"A record definition. It has a unique identifier *id*, an array *fields* of the full set of mandatory fields (a key-type typle for each), and an annotation that is the complete structural contract of the type (including any grammar syntax when applicable)."
+@"A record definition. It has a unique identifier *id*, an array *fields* of the full set of mandatory fields (a key-type tuple for each), and an annotation that is the complete structural contract of the type (including any grammar syntax when applicable)."
 record RecordDef with
   annotation(literal), id(literal), fields(record Tuple<literal, record TypeSpec>[])
 
@@ -83,7 +83,7 @@ record RecordDefIntent with
   name(literal), genericParams(record Tuple<literal, literal>[]), fields(record Tuple<literal, literal>[])
 
 #meta.record
-@"Test test test"
+@"Community for generating standardized record annotations from raw descriptions."
 community annotation
 
 #meta.record.annotation

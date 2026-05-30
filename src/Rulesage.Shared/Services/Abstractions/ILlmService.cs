@@ -26,6 +26,7 @@ public class LlmRequest
     public required LlmMessage[] Messages { get; init; }
     public double Temperature { get; init; } = 0.3;
     public int MaxTokens { get; init; } = 2048;
+    public bool EnableThinking { get; init; } = false;
 }
 
 public class LlmResponse

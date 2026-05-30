@@ -19,6 +19,12 @@ public class LlmConfig
 
 public class OpenAiCompatibleService : ILlmService
 {
+    private static readonly JsonSerializerOptions jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        PropertyNameCaseInsensitive = true
+    };
+    
     private readonly HttpClient _httpClient;
     private readonly LlmConfig _config;
     private readonly ILogger<OpenAiCompatibleService> _logger;
@@ -70,7 +76,7 @@ public class OpenAiCompatibleService : ILlmService
             try
             {
                 httpResponse = await _httpClient.PostAsJsonAsync(
-                    "", request, cancellationToken);
+                    "", request, jsonOptions, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -123,7 +129,7 @@ public class OpenAiCompatibleService : ILlmService
             try
             {
                 openAiResponse = await httpResponse.Content
-                    .ReadFromJsonAsync<OpenAiResponse>(cancellationToken: cancellationToken);
+                    .ReadFromJsonAsync<OpenAiResponse>(jsonOptions, cancellationToken);
             }
             catch (Exception ex)
             {
