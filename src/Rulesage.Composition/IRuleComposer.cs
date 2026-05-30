@@ -6,7 +6,6 @@ public interface IRuleComposer
 {
     Task<RuleExpr> ComposeAsync(
         string nlStructure,
-        RuleExpr[] prefetchedRules,
         TypeExpr? expectedType = null,
         CancellationToken cancellationToken = default);
 }

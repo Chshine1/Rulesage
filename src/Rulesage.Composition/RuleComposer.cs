@@ -12,11 +12,10 @@ public class RuleComposer(
 {
     public async Task<RuleExpr> ComposeAsync(
         string nlStructure,
-        RuleExpr[] prefetchedRules,
         TypeExpr? expectedType = null,
         CancellationToken cancellationToken = default)
     {
-        var context = await contextBuilder.BuildAsync(prefetchedRules, [], [], cancellationToken);
+        var context = await contextBuilder.BuildAsync(nlStructure, cancellationToken);
         var plan = await planner.PlanAsync(nlStructure, context, cancellationToken);
         var annotatedPlan = await typeAnnotator.AnnotateAsync(nlStructure, plan, cancellationToken);
 

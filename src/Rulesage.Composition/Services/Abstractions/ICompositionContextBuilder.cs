@@ -1,13 +1,8 @@
-﻿using Rulesage.Common.Grammar.Ast;
-using Rulesage.Composition.Types;
+﻿using Rulesage.Composition.Types;
 
 namespace Rulesage.Composition.Services.Abstractions;
 
 public interface ICompositionContextBuilder
 {
-    public Task<CompositionContext> BuildAsync(
-        RuleExpr[] availableRules,
-        RecordExpr[] availableNodes,
-        ActionExpr[] availableActions,
-        CancellationToken cancellationToken = default);
+    Task<CompositionContext> BuildAsync(string nlStructure, CancellationToken cancellationToken = default);
 }
