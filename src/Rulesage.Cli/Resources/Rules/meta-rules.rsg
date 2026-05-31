@@ -117,7 +117,7 @@ given:
     ref(literal) in none
       "the full id in the form of `name(\"<\"name1, name2, ...\">\")` where namei are generic param names, givem name: {$given.intent.name} and params: {$given.intent.genericParams.val1}"
   annotation:
-    satisfying interpret-record-annotation where
+    interpretation of interpret-record-annotation where
       rawText = $for.rawText, name = $given.intent.name,
       genericParams = $given.intent.genericParams, fields = $given.intent.fields
 must be:

@@ -1,4 +1,5 @@
-﻿using Rulesage.Composition.Services.Abstractions;
+﻿using Rulesage.Common.Grammar.Ast;
+using Rulesage.Composition.Services.Abstractions;
 using Rulesage.Composition.Types;
 using Rulesage.Shared.Services.Abstractions;
 
@@ -18,17 +19,25 @@ public class Planner(ILlmService llm) : IPlanner
         - Communities are named interpretation capabilities. You can delegate a sub‑interpretation subject to them.
         
         Output steps, each with a camelCase semantic key like `<key>: <step>` using only letters [a-zA-Z], use patterns like:
-        - record <record-id> with param1 = value1, param2 = value2, ...
-        - result of <action-id> where ...
-        - interpretation of <rule-id> where ...
-        - sequential: apply one of the above element-wise, using each param = (value|elements in arrayValue) (multiple arrays are processed lockstep, yielding an array of results)
-        - delegate to <community‑id> "subject" (allows interpolation). If no community fits, use: delegate to none "subject"
-        - just a value
+        - `record <record-id> with <field1> = <value1>, <field2> = <value2>, ...`
+        - `result of <action-id> where ...`
+        - `interpretation of <rule-id> where ...`
+        - sequential result: `seq <one of the above patterns>`, where a param value can be a common `<value>` or `iter <array-typed value>`. It produces an array of the original pattern result, where `iter` params are passed each as their array element (multiple arrays are processed lockstep)
+        - `(<type>) delegate to <community‑id> "<subject>"` (allows interpolation). If no community fits, use: `delegate to none "<subject>"`
+        - just a value: `<value>`
         
         where values can be:
-        - $key, referring to the result of a previous step
-        - "a literal string", allowing {$key} interpolation
-        - an array [value1, value2, ...]
+        - `$key(.field)`, referring to the result of a previous step (and their fields for records). Accessing a "field" of an array will map out the elements' field.
+        - `"<a literal string>"`, allowing `{$key}` interpolation and `\",\n,\{,\}` escapes
+        - an array `[<value1>, <value2>, ...]`
+        
+        A <type> must be a type expression, either `literal`, `record <record-id>(<generic-params>)` (generic params must be closed) or their arrays, e.g.
+        `literal`, `record Tuple<literal, record TypeSpec>[]`, `record TypeSpec[][]`
+        Every step will produce an instance of some type, parameters also expect correct types, you will make sure that types match when passing parameters, and the last step's result type matches the expected type (if given)
+        You will be given signatures of available records, actions and rules. Apart from these, you have:
+        - If A expects (B, C) produces D, then seq A (b, iter c) expects b:B and c:C[], produces D[]
+        - A delegate ensures its return type to be the one specified in the head `(<type>)` part
+        - A literal string value is of `literal` type, and interpolated values can be of any type
         
         Every step is purely declarative interpretation or transformation.
         The final step must deliver the required subject, a single step suffices if it answers directly, but it still needs a key.
@@ -38,32 +47,56 @@ public class Planner(ILlmService llm) : IPlanner
 
     private const string FewShotUser = 
         """
-        Subject: "A CsFile node containing deduplicated and sorted service registrations for all service interfaces"
+        Subject: "refactor the calculateTotal function to extract the tax logic"
+        Expected type: 
         
-        Records:
-        - cs-file: A C# file node with namespace, usings, lines
+        Available Records:
+        - FunctionSpec:
+          A function's signature description, used as the target of refactoring
+          { name: literal, params: record Param[], returnType: literal }
+        - Param:
+          Describes a single function parameter
+          { name: literal, type: literal }
+        - RefactorCommand:
+          A structured command record representing a complete refactoring intent
+          { action: literal, target: record FunctionSpec, options: record RefactorOptions }
+        - RefactorOptions:
+          Options for a refactoring operation, e.g., renaming or extracting logic
+          { renameTo: literal, extractTo: literal }
         
-        Actions:
-        - format-line: Formats an interface name into a registration statement
+        Available Actions:
+        - ParseFuncSignature:
+          Interprets a natural language function reference into a FunctionSpec
+          (signature: literal) -> record FunctionSpec
+        - NormalizeOptions:
+          Converts a natural language phrase about a refactoring intention into structured options
+          (rawOpts: literal) -> record RefactorOptions
         
-        Rules:
-        - all-interfaces: Interprets the set of all service interfaces
+        Available Rules:
+        - DefaultReturnType
+          Infers a typical return type for a given language when none is provided
+          (lang: literal) -> literal
+        
+        Available Communities:
+        - CodePhraseExtractor
+          // Extracts the relevant code identifier (e.g., function name) from a longer description
         """;
 
     private const string FewShotAssistant = 
         """
-        all: apply 'all-interfaces'
-        lines: sequence of action 'format-line' each with name = elements in $all
-        sortedLines: delegate to none "the lines in {$lines} deduplicated and sorted alphabetically"
-        csFile: record 'cs-file' with
-          namespace = "MyApp.Services",
-          usings = ["Microsoft.Extensions.DependencyInjection"],
-          lines = $sortedLines
+        targetSig: (literal) delegate to CodePhraseExtractor "calculateTotal function"
+        optsPhrase: (literal) delegate to none "extract the tax logic"
+        parsedFunc: result of ParseFuncSignature where signature = $targetSig
+        options: result of NormalizeOptions where rawOpts = $optsPhrase
+        defaultRet: interpretation of DefaultReturnType where lang = "typescript"
+        allFuncs: seq result of ParseFuncSignature where signature = iter [$targetSig]
+        command: record RefactorCommand with action = "refactor", target = $parsedFunc, options = $options, inferredReturn = $defaultRet
         """;
     
     public async Task<string> PlanAsync(
         string subject,
         CompositionContext context,
+        TypeExpr? expectedType = null,
         CancellationToken cancellationToken = default)
     {
         var parts = new List<string>
@@ -71,6 +104,10 @@ public class Planner(ILlmService llm) : IPlanner
             $"Subject: {subject}"
         };
 
+        if (expectedType != null)
+        {
+            parts.Add($"Expected type: {Common.Grammar.Parsers.Types.formatTypeExpr(expectedType)}");
+        }
         if (context.Records.Length != 0)
         {
             var nodesArray = string.Join("\n", context.Records.Select(n => $"- {n.Id}: {n.Annotation}"));

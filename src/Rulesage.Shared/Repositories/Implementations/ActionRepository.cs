@@ -89,16 +89,6 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
         await using var conn = dataSource.CreateConnection();
         await conn.OpenAsync(cancellationToken);
 
-        var sections = contextCommunity.Split('.');
-        var hierarchy = new string[sections.Length + 1];
-        var sectionSum = "";
-        hierarchy[0] = "";
-        for (var i = 0; i < sections.Length; i++)
-        {
-            sectionSum += sections[i];
-            hierarchy[i + 1] = sectionSum;
-        }
-
         await using var cmd =
             new NpgsqlCommand(
                 """
@@ -111,7 +101,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
                     script,
                     (annotation_embedding <=> $1) as distance
                 from actions
-                where community_id = any($2) and ignore = false
+                where (community_id = $2 or community_id = '') and ignore = false
                 order by distance
                 limit $3 offset $4;
                 """,
@@ -120,8 +110,7 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
 
         cmd.Parameters.Add(new NpgsqlParameter { Value = new Vector(queryVector), DataTypeName = "vector" });
         // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
-        cmd.Parameters.Add(new NpgsqlParameter<string[]>
-            { Value = hierarchy, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = contextCommunity, NpgsqlDbType = NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = take, NpgsqlDbType = NpgsqlDbType.Integer });
         cmd.Parameters.Add(new NpgsqlParameter<int> { Value = skip, NpgsqlDbType = NpgsqlDbType.Integer });
 
@@ -207,7 +196,8 @@ public class ActionRepository(NpgsqlDataSource dataSource, JsonSerializerOptions
 
         // ReSharper disable BitwiseOperatorOnEnumWithoutFlags
         cmd.Parameters.Add(new NpgsqlParameter { Value = ids, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
-        cmd.Parameters.Add(new NpgsqlParameter { Value = ignores, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Boolean });
+        cmd.Parameters.Add(new NpgsqlParameter
+            { Value = ignores, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Boolean });
         cmd.Parameters.Add(new NpgsqlParameter
             { Value = communities, NpgsqlDbType = NpgsqlDbType.Array | NpgsqlDbType.Text });
         cmd.Parameters.Add(new NpgsqlParameter

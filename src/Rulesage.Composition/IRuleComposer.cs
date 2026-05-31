@@ -5,9 +5,9 @@ namespace Rulesage.Composition;
 public interface IRuleComposer
 {
     Task<RuleExpr> ComposeAsync(
-        string nlStructure,
+        string subject,
         CancellationToken cancellationToken = default);
 
-    Task<RuleExpr> ComposeWithConstrainAsync(string nlStructure, TypeExpr expectedType, string contextCommunity,
+    Task<RuleExpr> ComposeWithConstrainAsync(string subject, TypeExpr expectedType, string contextCommunity,
         CancellationToken cancellationToken = default);
 }

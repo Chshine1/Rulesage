@@ -38,3 +38,20 @@ module Types =
                 )
                 regex "[a-zA-Z-][a-zA-Z0-9-]*" |>> AtomicType.Generic
             ]
+    
+    let rec private formatAtomicType (atomicType: AtomicType) : string =
+            match atomicType with
+            | AtomicType.Literal -> "literal"
+            | AtomicType.Generic n -> n
+            | AtomicType.Record (r, gs) ->
+                let generics =
+                    if gs.Length = 0 then
+                        ""
+                    else
+                        let sep = ", "
+                        $"<{gs |> List.map formatTypeExpr |> String.concat sep}>"
+                $"record {r}{generics}"
+    
+    and formatTypeExpr (typeExpr: TypeExpr) : string =
+        let array = [1..typeExpr.Dimension] |> Seq.fold (fun s _ -> $"{s}[]") ""
+        $"{formatAtomicType typeExpr.Atomic}{array}"
