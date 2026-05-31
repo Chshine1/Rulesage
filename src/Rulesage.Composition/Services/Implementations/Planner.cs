@@ -5,7 +5,7 @@ using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.Composition.Services.Implementations;
 
-public class Planner(ILlmService llm) : IPlanner
+public class Planner(ILlmService llm, ISignatureFormatter signatureFormatter) : IPlanner
 {
     private const string SystemPrompt = 
         """
@@ -106,7 +106,8 @@ public class Planner(ILlmService llm) : IPlanner
 
         if (expectedType != null)
         {
-            parts.Add($"Expected type: {Common.Grammar.Parsers.Types.formatTypeExpr(expectedType)}");
+            var e = await signatureFormatter.FormatTypeExprAsync(expectedType);
+            parts.Add($"Expected type: {e}");
         }
         if (context.Records.Length != 0)
         {
