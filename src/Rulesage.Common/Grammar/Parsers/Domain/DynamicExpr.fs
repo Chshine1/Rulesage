@@ -9,7 +9,7 @@ type ArgBlock = ArgExpr list
 type DynamicExpr =
     | Satisfying of ruleId: Identifier * args: ArgBlock
     | ResultOf of action: (Identifier * TypeExpr list) * args: ArgBlock
-    | Record of node: (Identifier * TypeExpr list) * args: ArgBlock
+    | Record of record: (Identifier * TypeExpr list) * args: ArgBlock
 
 
 namespace Rulesage.Common.Grammar.Parsers.Domain

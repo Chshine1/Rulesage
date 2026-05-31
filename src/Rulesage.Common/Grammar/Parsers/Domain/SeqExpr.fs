@@ -14,7 +14,7 @@ type IterArgBlock = IterArgExpr list
 type SeqExpr =
     | Satisfying of ruleId: Identifier * args: IterArgBlock
     | ResultOf of action: (Identifier * TypeExpr list) * args: IterArgBlock
-    | Record of node: (Identifier * TypeExpr list) * args: IterArgBlock
+    | Record of record: (Identifier * TypeExpr list) * args: IterArgBlock
 
 namespace Rulesage.Common.Grammar.Parsers.Domain
 
