@@ -27,6 +27,7 @@
         <Compile Include="Repositories\Implementations\CommunityRepository.fs" />
         <Compile Include="Utils\TaskUtils.fs" />
         <Compile Include="DocumentParser.fs" />
+        <Compile Include="Extensions\DependencyInjectionExtensions.fs" />
     </ItemGroup>
 
     <ItemGroup>

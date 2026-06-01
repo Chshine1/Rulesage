@@ -67,7 +67,7 @@ given:
        +"For generic record ids, they don't have to be closed, allowing freshly introduced open placeholder names (but must NOT collide with keys in generic context)."
        +"The second element is a dictionary of (placeholder name, needed type description) for each open placeholder that still needs to be resolved from its description into an actual TypeSpec."
   genericTypes:
-    seq satisfying interpret-type-spec where typeDesc = iter $given.rawType.val2.val2, genericContext = $for.genericContext
+    seq interpretation of interpret-type-spec where typeDesc = iter $given.rawType.val2.val2, genericContext = $for.genericContext
   genericParams:
     seq record Tuple<literal, record TypeSpec> with val1 = iter $given.rawType.val2.val1, val2 = iter $given.genericTypes
 must be:

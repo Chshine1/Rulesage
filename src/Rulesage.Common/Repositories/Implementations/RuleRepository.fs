@@ -16,6 +16,9 @@ type RuleRepository(dataSource: NpgsqlDataSource, jsonOptions: JsonSerializerOpt
 
     let deserialize (json: string) : 'T =
         JsonSerializer.Deserialize<'T>(json, jsonOptions)
+    
+    let serialize target : string =
+        JsonSerializer.Serialize(target, jsonOptions)
 
     interface IRuleRepository with
         member _.GetDocumentsAsync(cancellationToken) =
@@ -192,9 +195,9 @@ type RuleRepository(dataSource: NpgsqlDataSource, jsonOptions: JsonSerializerOpt
                     givens[i] <- r.Givens
                     mustBes[i] <- r.MustBe
 
-                let forsJson = JsonSerializer.Serialize(fors, jsonOptions)
-                let givensJson = JsonSerializer.Serialize(givens, jsonOptions)
-                let mustBesJson = JsonSerializer.Serialize(mustBes, jsonOptions)
+                let forsJson = serialize fors
+                let givensJson = serialize givens
+                let mustBesJson = serialize mustBes
 
                 use cmd =
                     new NpgsqlCommand(

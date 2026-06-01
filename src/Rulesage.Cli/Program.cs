@@ -34,6 +34,7 @@ public class Program
                     throw new Exception("Missing configuration section");
                 }
 
+                services.AddInfrastructure();
                 services.AddHandlers();
                 services.AddSharedModule(dbConnectionString, Path.GetFullPath(onnxRelative, basePath),
                     Path.GetFullPath(vocabRelative, basePath), context.Configuration);

@@ -16,6 +16,9 @@ type ActionRepository(dataSource: NpgsqlDataSource, jsonOptions: JsonSerializerO
 
     let deserialize (json: string) : 'T =
         JsonSerializer.Deserialize<'T>(json, jsonOptions)
+    
+    let serialize target : string =
+        JsonSerializer.Serialize(target, jsonOptions)
 
     let mapToActionExpr
         (reader: NpgsqlDataReader)
@@ -203,10 +206,10 @@ type ActionRepository(dataSource: NpgsqlDataSource, jsonOptions: JsonSerializerO
                 let scripts = actionsArray |> Array.map _.Script
 
                 let genericParamsJson =
-                    actionsArray |> Array.map _.GenericParams |> JsonSerializer.Serialize
+                    actionsArray |> Array.map _.GenericParams |> serialize
 
-                let forsJson = actionsArray |> Array.map _.Fors |> JsonSerializer.Serialize
-                let returnsJson = actionsArray |> Array.map _.Returns |> JsonSerializer.Serialize
+                let forsJson = actionsArray |> Array.map _.Fors |> serialize
+                let returnsJson = actionsArray |> Array.map _.Returns |> serialize
 
                 use conn = dataSource.CreateConnection()
                 do! conn.OpenAsync(cancellationToken)

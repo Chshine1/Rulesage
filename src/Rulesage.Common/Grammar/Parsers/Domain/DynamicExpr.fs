@@ -42,7 +42,7 @@ module Dynamic =
     let pDynamicExpr: Parser<DynamicExpr> =
         choice
             [
-                skipString "satisfying" >>. s1 >>. pId .>>. (pArgBlock "where")
+                skipString "interpretation of" >>. s1 >>. pId .>>. (pArgBlock "where")
                 |>> DynamicExpr.Satisfying
                 skipString "result of" >>. s1 >>. pImplId .>>. (pArgBlock "where")
                 |>> DynamicExpr.ResultOf

@@ -53,7 +53,7 @@ module Seq =
         >>. s1
         >>. choice
                 [
-                    skipString "satisfying" >>. s1 >>. pId .>>. (pIterArgBlock "where")
+                    skipString "interpretation of" >>. s1 >>. pId .>>. (pIterArgBlock "where")
                     |>> SeqExpr.Satisfying
                     skipString "result of" >>. s1 >>. pImplId .>>. (pIterArgBlock "where")
                     |>> SeqExpr.ResultOf

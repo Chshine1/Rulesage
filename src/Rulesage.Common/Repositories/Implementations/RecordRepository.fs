@@ -16,6 +16,9 @@ type RecordRepository(dataSource: NpgsqlDataSource, jsonOptions: JsonSerializerO
 
     let deserialize (json: string) : 'T =
         JsonSerializer.Deserialize<'T>(json, jsonOptions)
+    
+    let serialize target : string =
+        JsonSerializer.Serialize(target, jsonOptions)
 
     interface IRecordRepository with
         member _.GetDocumentsAsync(cancellationToken) =
@@ -182,8 +185,8 @@ type RecordRepository(dataSource: NpgsqlDataSource, jsonOptions: JsonSerializerO
                     genericParams[i] <- r.GenericParams
                     fors[i] <- r.Fors
 
-                let genericParamsJson = JsonSerializer.Serialize(genericParams, jsonOptions)
-                let forsJson = JsonSerializer.Serialize(fors, jsonOptions)
+                let genericParamsJson = serialize genericParams
+                let forsJson = serialize fors
 
                 use cmd =
                     new NpgsqlCommand(
