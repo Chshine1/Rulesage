@@ -5,7 +5,7 @@ open System.Threading
 open System.Threading.Tasks
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
-open Rulesage.Shared.Repositories.Abstractions
+open Rulesage.Common.Repositories.Abstractions
 open Rulesage.Synthesis.Services.Abstractions
 open MoonSharp.Interpreter
 open Rulesage.Synthesis.Types

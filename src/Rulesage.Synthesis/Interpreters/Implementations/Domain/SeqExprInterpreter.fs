@@ -3,8 +3,8 @@
 open System.Threading
 open System.Threading.Tasks
 open Rulesage.Common.Grammar.Ast
+open Rulesage.Common.Repositories.Abstractions
 open Rulesage.Common.Utils.TaskUtils
-open Rulesage.Shared.Repositories.Abstractions
 open Rulesage.Synthesis
 open Rulesage.Synthesis.Interpreters.Abstractions
 open Rulesage.Synthesis.Services.Abstractions
