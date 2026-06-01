@@ -1,10 +1,13 @@
-﻿@"A generic tuple of two values"
+﻿@"A generic tuple of two values of generic types t1, t2 respectively.\n"
++"{ val1: t1; val2: t2 }"
 record Tuple<t1, t2> with val1(t1), val2(t2)
 
-@"Group an array of objects by equivalence of a given key, returns the dictionary of groups as an array of Tuple<literal, t[]>."
+@"Group an array of objects by equivalence of a given key, with a generic param t of array elements, returns the dictionary of groups as an array of Tuple<literal, t[]>.\n"
++"(array: t[], groupKey: literal) -> record Tuple<literal, t[]>[]"
 action groupBy<t> on array(t[]), groupKey(literal) returns record Tuple<literal, t[]>[]
 
-@"Find a dictionary value of the given key"
+@"Find a dictionary value of the given key, with generic params tk, tv, for types of dictionary key and value, respectively.\n"
++"(dictionary: record Tuple<tk, tv>[], key: tk) -> tv"
 action findInDictionary<tk, tv> on dictionary(record Tuple<tk, tv>[]), key(tk) returns tv
 
 
@@ -17,19 +20,22 @@ community meta
 community ruleset
 
 #meta.ruleset
-@"A compact description of a single ruleset unit, containing its unique id, its unit type (\"record\"|\"rule\"|\"action\"), and its natural language annotation."
+@"A compact description of a single ruleset unit, containing its unique id, its unit type (\"record\"|\"rule\"|\"action\"), and its natural language annotation.\n"
++"{ id: literal; unitType: literal; annotation: literal }"
 record UnitSummary with
   id(literal), unitType(literal), annotation(literal)
 
 #meta.ruleset
-@"A collection of ids (of records/rules/actions, respectively), which describes a query against the ruleset requiring units of these ids."
+@"A collection of ids (of records/rules/actions, respectively), which describes a query against the ruleset requiring units of these ids.\n"
++"{ recordIds: literal[]; ruleIds: literal[]; actionIds: literal[] }"
 record RulesetQuery with
   recordIds(literal[]),
   ruleIds(literal[]),
   actionIds(literal[])
 
 #meta.ruleset
-@"Find units in the ruleset by semantic similarity to a literal query, return the similar units as an array of record UnitSummary"
+@"Find units in the ruleset by semantic similarity to a literal query, return the similar units as an array of record UnitSummary.\n"
++"(query: literal) -> record UnitSummary[]"
 action retrieveSimilarUnits on query(literal) returns record UnitSummary[]
 
 
@@ -39,11 +45,13 @@ action retrieveSimilarUnits on query(literal) returns record UnitSummary[]
 community type
 
 #meta.type
-@"A type spec reference. It only has a literal string *typeId*, which must be of `type-id := base-id (\"[]\")?`, and `base-id = \"literal\" | (\"record\" record-id generic-params) | type-id`. Here generic params are passed as `\"<\"t1,t2,...\">\"` if needed, and `t1,t2` are again type identifiers or generic names provided a generic context."
+@"A type spec reference. It only has a literal string *typeId*, which must be of `type-id := base-id (\"[]\")?`, and `base-id = \"literal\" | (\"record\" record-id generic-params) | type-id`. Here generic params are passed as `\"<\"t1,t2,...\">\"` if needed, and `t1,t2` are again type identifiers or generic names provided a generic context.\n"
++"{ typeId: literal }"
 record TypeSpec with typeId(literal)
 
 #meta.type
-@"Interprets a natural language type description phrase into a TypeSpec, where the type can only be a literal string/generic record and their arrays without any other type features, provided a generic context (a name‑description dictionary of generic type parameters)."
+@"Interprets a natural language type description phrase into a TypeSpec, where the type can only be a literal string/generic record and their arrays without any other type features, provided a generic context (a name‑description dictionary of generic type parameters).\n"
++"(typeDesc: literal, genericContext: record Tuple<literal, literal>[]) -> record TypeSpec"
 rule interpret-type-spec for typeDesc(literal), genericContext(record Tuple<literal, literal>[])
 given:
   availableUnits: result of retrieveSimilarUnits where query = $for.typeDesc
@@ -63,7 +71,7 @@ given:
   genericParams:
     seq record Tuple<literal, record TypeSpec> with val1 = iter $given.rawType.val2.val1, val2 = iter $given.genericTypes
 must be:
-  ref(TypeSpec) in none
+  ref(record TypeSpec) in none
       "the final, fully closed TypeSpec from a raw type {$given.rawType}, with open generic placeholders resolved by types: {$given.genericParams}."
 
 
@@ -73,12 +81,14 @@ must be:
 community record
 
 #meta.record
-@"A record definition. It has a unique identifier *id*, an array *fields* of the full set of mandatory fields (a key-type tuple for each), and an annotation that is the complete structural contract of the type (including any grammar syntax when applicable)."
+@"A record definition. It has a unique identifier *id*, an array *fields* of the full set of mandatory fields (a key-type tuple for each), and an annotation that is the complete structural contract of the type (including any grammar syntax when applicable).\n"
++"{ annotation: literal; id: literal; fields: record Tuple<literal, record TypeSpec>[] }"
 record RecordDef with
   annotation(literal), id(literal), fields(record Tuple<literal, record TypeSpec>[])
 
 #meta.record.ignore
-@"A record definition intent with a string name, a name-description dictionary of generic parameters, and a (name, expected type definition) dictionary of fields."
+@"A record definition intent with a string name, a name-description dictionary of generic parameters, and a (name, expected type definition) dictionary of fields.\n"
++"{ name: literal; genericParams: record Tuple<literal, literal>[]; fields: record Tuple<literal, literal>[] }"
 record RecordDefIntent with
   name(literal), genericParams(record Tuple<literal, literal>[]), fields(record Tuple<literal, literal>[])
 
@@ -87,7 +97,8 @@ record RecordDefIntent with
 community annotation
 
 #meta.record.annotation
-@"Interprets a natural language for a record annotation into a standardized one"
+@"Interprets a natural language for a record annotation into a standardized one.\n"
++"(rawText: literal, name: literal, genericParams: record Tuple<literal, literal>[], fields: record Tuple<literal, record TypeSpec>[]) -> literal"
 rule interpret-record-annotation for
   rawText(literal), name(literal),
   genericParams(record Tuple<literal, literal>[]),
@@ -96,8 +107,9 @@ must be: ref(literal) in none
   "the complete declarative description of the structure and shapes for the record definition: {$for.rawText}, whose name is {$for.name}, has generic parameters: {$for.genericParams} and fields: {$for.fields}"
 
 #meta.record
-@"Interprets a natural-language text that describes exactly one record type definition into a standardized RecordDef"
-+"The description must declare all mandatory fields with their names and a detailed type and structural description. And it should be purely structural and declarative: describing what shape the data has, not how it is computed or when it is used"
+@"Interprets a natural-language text that describes exactly one record type definition into a standardized RecordDef.\n"
++"The description must declare all mandatory fields with their names and a detailed type and structural description. And it should be purely structural and declarative: describing what shape the data has, not how it is computed or when it is used.\n"
++"(rawText: literal) -> record RecordDef"
 rule interpret-record-def for rawText(literal)
 given:
   intent:
