@@ -1,6 +1,6 @@
-﻿using Rulesage.Composition.Services.Abstractions;
+﻿using Rulesage.Common.Repositories.Abstractions;
+using Rulesage.Composition.Services.Abstractions;
 using Rulesage.Composition.Types;
-using Rulesage.Shared.Repositories.Abstractions;
 using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.Composition.Services.Implementations;

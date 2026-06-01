@@ -6,8 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.Tokenizers;
 using Npgsql;
-using Rulesage.Shared.Repositories.Abstractions;
-using Rulesage.Shared.Repositories.Implementations;
 using Rulesage.Shared.Services.Abstractions;
 using Rulesage.Shared.Services.Abstractions.TextCleaner;
 using Rulesage.Shared.Services.Implementations;
@@ -61,11 +59,6 @@ public static class ServiceCollectionExtensions
                 builder.UseVector();
                 return builder.Build();
             });
-
-            collection.AddScoped<ICommunityRepository, CommunityRepository>();
-            collection.AddScoped<IRecordRepository, RecordRepository>();
-            collection.AddScoped<IActionRepository, ActionRepository>();
-            collection.AddScoped<IRuleRepository, RuleRepository>();
             
             collection.AddScoped<IEmbeddingManager, EmbeddingManager>();
 

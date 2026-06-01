@@ -16,16 +16,25 @@
         <Compile Include="Grammar\Parsers\Domain\SeqExpr.fs" />
         <Compile Include="Grammar\Parsers\Domain\ValueExpr.fs" />
         <Compile Include="Grammar\Parsers\Domain\RuleExpr.fs" />
+        <Compile Include="Repositories\Abstractions\IDocumentRepository.fs" />
+        <Compile Include="Repositories\Abstractions\IRecordRepository.fs" />
+        <Compile Include="Repositories\Abstractions\IActionRepository.fs" />
+        <Compile Include="Repositories\Abstractions\IRuleRepository.fs" />
+        <Compile Include="Repositories\Abstractions\ICommunityRepository.fs" />
+        <Compile Include="Repositories\Implementations\RecordRepository.fs" />
+        <Compile Include="Repositories\Implementations\ActionRepository.fs" />
+        <Compile Include="Repositories\Implementations\RuleRepository.fs" />
+        <Compile Include="Repositories\Implementations\CommunityRepository.fs" />
         <Compile Include="Utils\TaskUtils.fs" />
         <Compile Include="DocumentParser.fs" />
-        <EmbeddedResource Include="Migrations\*.sql" />
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="FParsec" Version="1.1.1" />
       <PackageReference Include="FSharp.SystemTextJson" Version="1.4.36" />
       <PackageReference Update="FSharp.Core" Version="10.1.300" />
-      <PackageReference Include="Npgsql" Version="10.0.2" />
+      <PackageReference Include="Npgsql" Version="10.0.3" />
+      <PackageReference Include="Pgvector" Version="0.3.2" />
     </ItemGroup>
 
 </Project>

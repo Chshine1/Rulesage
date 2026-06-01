@@ -29,10 +29,13 @@ module DocumentParser =
             let community = oCommunity |> Option.defaultValue ""
             let parts = community.Split('.')
             let lastIsIgnore = parts.Length > 0 && parts[parts.Length - 1] = "ignore"
+
             let newCommunity =
                 if lastIsIgnore then
                     String.Join(".", parts[.. parts.Length - 2])
-                else community
+                else
+                    community
+
             choice
                 [
                     pRule lastIsIgnore newCommunity annotation |>> RuleDef

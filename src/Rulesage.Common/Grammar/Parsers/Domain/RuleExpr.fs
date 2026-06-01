@@ -129,11 +129,11 @@ module Rule =
                 Returns = r
                 Script = ""
             }
-    
+
     let pCommunity (community: string) (annotation: string) : Parser<CommunityExpr> =
         skipString "community" .>> s1 >>. pKey
         |>> fun s ->
             {
-                Sections = [s] |> Seq.append (community.Split '.')
+                Sections = [ s ] |> Seq.append (community.Split '.')
                 Annotation = annotation
             }

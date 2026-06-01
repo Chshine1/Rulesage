@@ -37,7 +37,12 @@ module Primitives =
         .>>. pId
         .>> s1
         .>>. pSingleLineString
-        |>> fun ((t, c), s) -> { ExpctedType = t; Community = c; Desc = s }
+        |>> fun ((t, c), s) ->
+            {
+                ExpctedType = t
+                Community = c
+                Desc = s
+            }
 
     let pPrimitiveExpr, private pPrimitiveExprRef =
         createParserForwardedToRef<PrimitiveExpr, unit> ()

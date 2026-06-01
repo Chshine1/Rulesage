@@ -1,8 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Rulesage.Common.Grammar.Ast;
+using Rulesage.Common.Repositories.Abstractions;
 using Rulesage.Retrieval.Options;
-using Rulesage.Shared.Repositories.Abstractions;
 using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.Retrieval;

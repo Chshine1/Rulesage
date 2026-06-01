@@ -1,5 +1,5 @@
 ﻿using Rulesage.Common;
-using Rulesage.Shared.Repositories.Abstractions;
+using Rulesage.Common.Repositories.Abstractions;
 using Rulesage.Shared.Services.Abstractions;
 using Rulesage.Shared.Services.Abstractions.TextCleaner;
 
