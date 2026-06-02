@@ -240,3 +240,88 @@ dotnet run ruleset truncate
 dotnet run network visualize --input ./Resources/Rules/meta-rules.rsg --output ./Resources/Rules/dot
 dotnet run network discover --input ./Resources/Rules/meta-rules.rsg --output ./Resources/Rules/dot --label "interpret-project-items:pi" "interpret-type-spec:ts" "interpret-rule-def:rd" "interpret-record-def:rcd" "interpret-action-def:ad"
 ```
+
+We are building a "ruleset", which is a finite set of records, actions and rules.
+
+The final mission for the ruleset is to "interpret" a "subject" into some records.
+
+"Add a command which solely generates embeddings for all database entities' annotation field"
+
+Sure just adding a command? Is there something that already exists? I'll stop this and report back on a reason "There is a command which already handles this"
+
+- Meaning: When we are adding something, we first need to determine if it exists, and stops, reports if it indeed exists
+- **Rephrase**: Adding (something) = (If this #something exists, and give a #reason) + action reports: "This something already exists (#reason)" if #exists, otherwise add (something), knowing that it doesn't exist
+- **Suggests**: When we are adding something, we want to know if it exists. If it exists already, we can directly translate this add process, otherwise check first.
+    Commands are organized as root-subcommands -> many subcommands
+- **Rephrase**: A cli project has commands, which handle a set of functionalities, distributed to commands
+- **Suggests**: Project (architecture: cli, csharp + fsharp, functionality: AI coding **NO, They are actual implementations**); Command (functionality); Organization; (models, should come with annotations, but they can't find actual structures)
+- A cli program is an object where you can input something, then trigger action based on the input, stateless once an action is complete
+- The program may handle several responsibility/actions. However, it may just handle one action, just one script which runs something
+- "We are using sevaral responsibility" is an instance. But "We are using a cli project" is also an instance?
+    I see that there are commands on network, ruleset and a common command. Network does network analysis on an existing ruleset, Ruleset operates on rulest itself, and Common do other things
+    The rulset is exactly stored in the database, or when we are talking about database, we are just talking about the ruleset
+    So I look under Ruleset command (and if we are to add, add here), there are init, save search, truncate
+(Actually I think when I'm looking at init, save, search, truncate, I don't know what they are exactly, I need further reminders, the same for root commands)
+    Init applies migrations, only sets up the database structure, isn't related.
+    Save reads a given dsl file and parses it, saves to database, no. But looks like it handles db updates, so maybe it has behaviours related to embedding generations:
+    Search is pure queries, no
+    Truncate clears out the database, no
+So the answer is, no, I can indeed add a command, from discussion above, I know that we should add a subcommand under Ruleset
+
+What is "add"? Actually it's just add, but we cannot standardly add many things, we can only standardly add projects, directories, files and file contents.
+Meaning that we have things that "standard addition is capable of". If adding a thing that's not these, then it should be split into these
+But no, it's not actually **just** add. Oh, no we can *add to rulesets*.
+
+We can only standardly add projects, directories, files, file contents or a rule, or rule content.
+What's the difference of adding content or modifying content?
+
+Or we say: Adding something to something, adding something is adding something to the solution (implicitly)
+So adding something to something, meaning that latter "something" consists of lots of things and we are adding: say
+The solution consists of a ruleset, projects, solution folders and isolated files
+
+Adding something to the solution means: What will this something be? No
+
+How to add a sub-command exactly?
+
+I know that adding a sub-command is to create a file named `<Command>Command.cs` under the corresponding root-subcommand directory, it could give you the ability to create a command instance in Program.cs and registers it
+Then create the command instance in Program, registers it.
+In `<Command>Command.cs`, there will be a static partial class named as <RootCommand>Commands, with only one public method named as Create<Command>Command, accepting an IServiceProvider which is the DI container it can resolve services from, and returns a required Command instance.
+Then "create the command instance in Program, registers it" steps knows the class has this signature, calls it. It also knows that the Main function has sevaral parts: Building IHost, completing RootCommand, execute, this will be added to "completing RootCommand", and uses the IServiceProvider from the built IHost.
+
+Or: The project entrypoint is the Main function, we want it to be a cli project with several commands, each with a function
+
+The choice is that we are using System.CommandLine, which needs a RootCommand and register subcommands, then execute. It's implemented by the program completing RootCommand + execute section.
+
+Each command handles a functionality, which may come with parameters. They are implemented by setting command options, then call SetAction.
+
+Because every async function needs a CancellationToken.
+
+SetAction is a function call, then it must accept an instance of the required type. Also, it's something which will be called which can handle the required functionality.
+
+It accepts Func<ParseResult,CancellationToken,Task>, an instance here should directly be an async lambda with parameters async (result, cancellationToken) => { The async body that handles the functionality }
+
+We are using DI, and we use "handlers" to wrap command actions, each root command corresponds to a handler class resolved from DI, with methods corresponding to subcommands, implementing their functionalities.
+
+Thus the async lambda body is simply creating a scope, resolve the handler from the scope, read the parameters from result, and pass them to the handler method to call it
+
+But after that, the handler can do whatever it wants.
+
+Now async lambda needs a service provider to create the scope and use DI. So we are using a factory method for each command: It accepts an IServiceProvider, creates the command with options, SetAction which uses this service provider and finally returns it.
+
+But for the command to work, we call this factory method to create the command in Program, then use Subcommands.Add to do it.
+
+It needs an IServiceProvider, Program starts with building an IHost and configuring its services, served as the host for the program, use its service provider.
+
+**INSIGHT**: Everything comes with a "reason"?
+
+Or say, we cannot state "a subcommand is a rootcommand's sub commands with something?" No we can't
+
+A "mind model" on "objects" for the project: Command, Parameters, Services, etc. They are all models.
+Method Call, Method Parameter, Whatever (Makes sense)
+
+So we are actually building **Domain concepts** (previous "subjects"). And we don't "interpret" them, but **implement them**
+For example, a **Command** is a domain concept, it's implemented by a **root command**, a **subcommand** and a **command action** (all domain concepts)
+(So what do we mean by "implementing" here?)
+**INSIGHT**: We say that the "domain concept" command is an ability to identify a user input, read user parameters and delegate it to the intended action.
+Then it's "implemented", because root command + subcommand identifies it, subcommand can read user parameters, and there is an action.
+**MAKES SENSE**
