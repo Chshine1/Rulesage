@@ -1,16 +1,13 @@
 ﻿domain base
 
-@"A generic tuple of two values of generic types t1, t2 respectively.\n"
-+"{ val1: t1; val2: t2 }"
-record Tuple<t1, t2> with val1(t1), val2(t2)
+@"A generic tuple of two values of generic types t1, t2 respectively."
+record tuple<t1, t2> with val1(t1), val2(t2)
 
-@"Group an array of objects by equivalence of a given key, with a generic param t of array elements, returns the dictionary of groups as an array of Tuple<literal, t[]>.\n"
-+"(array: t[], groupKey: literal) -> record Tuple<literal, t[]>[]"
-action groupBy<t> on array(t[]), groupKey(literal) returns record Tuple<literal, t[]>[]
+@"Group an array of objects by equivalence of a given key, with a generic param t of array elements, returns the dictionary of groups as an array of tuple<literal, t[]>."
+action group-by<t> on array(t[]), groupKey(literal) returns tuple<literal, t[]>[]
 
-@"Find a dictionary value of the given key, with generic params tk, tv, for types of dictionary key and value, respectively.\n"
-+"(dictionary: record Tuple<tk, tv>[], key: tk) -> tv"
-action findInDictionary<tk, tv> on dictionary(record Tuple<tk, tv>[]), key(tk) returns tv
+@"Find a dictionary value of the given key, with generic params tk, tv, for types of dictionary key and value, respectively."
+action find-in-dictionary<tk, tv> on dictionary(tuple<tk, tv>[]), key(tk) returns tv
 
 @"List the direct entries (file/directory names) under a directory."
 action list-dir on path(literal) returns literal[]
@@ -25,7 +22,7 @@ action read-file-head on path(literal), lineCount(literal) returns literal[]
 concept grep-match with lineNumber(literal), content(literal)
 
 @"Search for a regex pattern in a file, returning matching lines and line numbers."
-action grep on path(literal), pattern(literal) returns record grep-match[]
+action grep on path(literal), pattern(literal) returns grep-match[]
 
 @"Replace the first occurrence of an old string with a new string in a file."
 action replace-in-file on path(literal), oldString(literal), newString(literal) returns literal

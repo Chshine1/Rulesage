@@ -2,4 +2,25 @@
 
 @"Basic information of a .NET project."
 concept DotnetProject
-  csprojPath(literal), programPath(literal), rootNamespace(literal)
+  csprojPath(literal),
+  projectName(literal),
+  rootNamespace(literal),
+  targetFramework(literal),        // e.g., "net8.0"
+  outputType(literal),             // "Exe", "Library", etc.
+  packageReferences(PackageReference[]),
+  projectReferences(ProjectReference[])
+
+@"A NuGet package reference."
+concept PackageReference
+  packageId(literal),
+  version(literal)
+
+@"A project-to-project reference."
+concept ProjectReference
+  projectPath(literal),
+  projectName(literal)
+
+@"A .NET solution."
+concept DotnetSolution
+  solutionPath(literal),
+  projects(DotnetProject[])
