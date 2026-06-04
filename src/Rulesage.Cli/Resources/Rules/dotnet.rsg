@@ -1,0 +1,5 @@
+﻿domain dotnet
+
+@"Basic information of a .NET project."
+concept DotnetProject
+  csprojPath(literal), programPath(literal), rootNamespace(literal)

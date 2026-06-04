@@ -1,0 +1,15 @@
+﻿domain clr
+
+@"CLR types: classes, structs, interfaces, etc."
+concept clr-type
+  name(literal), namespace(literal), kind(literal)
+
+@"Methods in a type."
+concept clr-method
+  name(literal), parameterTypes(literal[]), returnType(literal)
+
+domain csharp
+
+@"Location and structure of a C# class declaration."
+concept class-declaration
+  className(literal), namespace(literal), filePath(literal), baseClass(literal)

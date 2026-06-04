@@ -1,0 +1,13 @@
+﻿domain structural-parsing
+
+@"A command with name, description, list of subcommands, and list of options."
+concept command
+  name(literal), annotation(literal), subcommands(record command[]), options(record option[])
+
+@"A named parameter with a name, optional aliases, type, and description."
+concept option
+  name(literal), aliases(literal[]), type(literal), description(literal)
+
+@"User input containing the command name and bound option values."
+concept user-input
+  commandName(literal), boundOptions(record tuple<literal, literal>[])

@@ -1,0 +1,14 @@
+﻿domain cli-program
+
+@"standard readable input stream"
+concept stdin with handle(literal)
+
+@"Standard output stream, write-only byte stream."
+concept stdout with handle(literal)
+
+@"Standard error stream, write-only byte stream."
+concept stderr with handle(literal)
+
+@"A CLI program with three standard streams and an executable name."
+concept cli-program with
+  name(literal), stdin(record stdin), stdout(record stdout), stderr(record stderr)
