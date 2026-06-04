@@ -1,6 +1,5 @@
 ﻿domain base
 
-
 @"A generic tuple of two values of generic types t1, t2 respectively.\n"
 +"{ val1: t1; val2: t2 }"
 record Tuple<t1, t2> with val1(t1), val2(t2)

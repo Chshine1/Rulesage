@@ -1,0 +1,5 @@
+﻿domain csharp
+
+@"Location and structure of a C# class declaration."
+concept class-declaration
+  className(literal), namespace(literal), filePath(literal), baseClass(literal)
