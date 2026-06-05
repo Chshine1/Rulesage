@@ -75,21 +75,24 @@ concept attribute-usage with
   constructorArguments(literal[]),    // literal representations
   namedProperties(tuple<literal,literal>[])  // (name, value)
 
-@"Constraint on a general interface name"
-rule interface-name-constraint given:
-constraint: "A C# interface name must begin with uppercase 'I' and follow PascalCase (e.g., 'IReadable')."
+@"Constraints on a general interface name"
+rule interface-name-constraints given:
+constraints: [
+  "Interface name must begin with uppercase 'I' and follow PascalCase (e.g., 'IReadable')."
+]
 
 @"Provides constraints for general asynchronous method signatures."
 rule async-method-constraints given:
 constraints: [
-  "Method name must end with 'Async'.",
-  "Should include a CancellationToken parameter named 'cancellationToken' with default value 'default', placed as the last parameter."
+  "Async method name must end with 'Async'.",
+  "Async method should include a CancellationToken parameter named 'cancellationToken' with default value 'default', placed as the last parameter."
 ]
 
-@"Provides naming constraint for general generic type parameters"
-rule generic-parameter-naming-constraint given:
-constraint: 
+@"Provides naming constraints for general generic type parameters"
+rule generic-parameter-naming-constraints given:
+constraints: [
   "For a single unconstrained parameter, use 'T' as the name; or for a specific role: use T<Role> as the name, e.g. TKey, TValue, TResult."
+]
 
 @"Resources in a class that need disposing, categories: managed resources, unmanaged resources or async disposable resources."
 concept disposable-resources with
