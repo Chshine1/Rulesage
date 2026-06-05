@@ -1,16 +1,13 @@
 ﻿domain csharp
 
-#leaf
 @"A semicolon ';' marking statement ending."
 concept semicolon-separator
 
-#leaf
 @"A using directive, e.g., 'using System;' or 'using Math = System.Math;'."
 concept using-directive with
   namespace(literal),
   aliasName(literal)                  // empty if not alias
 
-#leaf
 @"Complete class/struct/record/interface header, including generics and constraints."
 +"Generates e.g.: 'public sealed class MyClass<T> : Base, IInterface where T : class'"
 concept class-header with
@@ -21,14 +18,12 @@ concept class-header with
   implementedInterfaces(literal[]),
   genericParameters(generic-parameter-definition[])  // empty if none
 
-#leaf
 @"A single generic type parameter with its constraints.
 Used inside class-header or method-signature."
 concept generic-parameter-definition with
   name(literal),                      // e.g., "T"
   constraints(literal[])              // e.g., ["class", "new()", "IComparable"]
 
-#leaf
 @"Method signature without body. Generates e.g.: 'private Task<T> GetAsync<T>(string key) where T : class'"
 concept method-signature with
   methodName(literal),                // must be PascalCase
@@ -36,13 +31,15 @@ concept method-signature with
   modifiers(literal[]),               // e.g., ["public", "static", "async"]
   parameters(parameter-definition[]),
   genericParameters(generic-parameter-definition[])
+  
+@"The content of a class/struct/record body as a braced block."
+concept class-body with
+  content(literal)                    // the complete method body content without braces
 
-#leaf
 @"Method body as a braced block."
 concept method-body with
   content(literal)                    // the complete method body content without braces
 
-#leaf
 @"A single parameter declaration, e.g., 'int count' or 'params string[] args'."
 concept parameter-definition with
   name(literal),
@@ -50,7 +47,6 @@ concept parameter-definition with
   isParams(literal),                  // "true" | "false"
   defaultValue(literal)               // may be empty
 
-#leaf
 @"Full property declaration, e.g., 'public string Name { get; set; }'"
 concept property-declaration with
   propertyName(literal),
@@ -59,7 +55,6 @@ concept property-declaration with
   getterAccess(literal),              // "", "private", "internal" etc.
   setterAccess(literal)
 
-#leaf
 @"Field declaration, e.g., 'private readonly int _count;'"
 concept field-declaration with
   fieldName(literal),
@@ -68,14 +63,12 @@ concept field-declaration with
   isReadonly(literal),
   initializer(literal)                // "42" or empty
 
-#leaf
 @"Event declaration, e.g., 'public event EventHandler Click;'"
 concept event-declaration with
   eventName(literal),
   handlerType(literal),
   modifiers(literal[])
 
-#leaf
 @"Attribute usage, e.g., '[Obsolete(\"reason\")]'"
 concept attribute-usage with
   attributeType(literal),             // usage name like "Obsolete" without "Attribute" suffix
@@ -153,76 +146,60 @@ rule disposable-pattern-constraints for classDescription(literal) given:
       ]
     else []
 
----
+@"Assembles a complete class/struct/record/interface declaration as a literal string, from a semantic description."
+rule compose-class-declaration for description(literal) given:
+needsBody:
+  ref(literal)
+      "If there is a body for a type declaration described by: \"{$description}\". Answer strictly 'true' or 'false'."
+     +"\nA body is required if it contains any members (methods, properties, fields, constants, nested types, etc.)."
+signature:
+  ref(literal)
+      "The complete signature line (class/struct/record/interface header) for: \"{$description}\"."
+     +"\nInclude all modifiers, name, generic parameters, base class, and interfaces."
+     +"\nReturn only the signature line, without body or semicolon."
+body:
+  if $needsBody is "true" then
+    ref(literal)
+        "The body content (without outer braces) for the type described as: \"{$description}\"."
+       +"\nInclude all members: fields, methods, properties, nested types, etc."
+       +"\nReturn only the body content, no outer braces."
+  else
+    ""
+completeClass:
+  if $needsBody is "true" then
+    result of concat-string where strings = [
+      $signature, "\n{\n", $body, "\n}"
+    ]
+  else
+    result of concat-string where strings = [
+      $signature, ";"
+    ]
 
-@"Determines whether a member or type declaration with an empty body should
-be terminated by a semicolon or an empty brace block, according to C# rules:
-- Abstract methods, interface members, and partial method declarations → semicolon.
-- Non‑abstract class/struct methods → empty braces (enforced by the language).
-- For records / class / struct definitions: an empty body may be written with
-  braces; a record with a primary constructor can also end with a semicolon.
-Returns either 'semicolon' or 'braced-content'."
-rule resolve-body-terminator
-   for memberKind(literal),     // "method" | "property" | "class" | "record" | "interface" ...
-       isAbstract(literal),     // "true"/"false"
-       hasDefaultImpl(literal), // "true"/"false" for interface members with default implementation
-       isPartial(literal)       // "true"/"false"
-must be:
+@"Assembles a complete method declaration as the full literal string, from a semantic description."
+rule compose-method-declaration for description(literal) given:
+needsBody:
   ref(literal) in none
-      "Given memberKind={$for.memberKind}, isAbstract={$for.isAbstract},"
-     +" hasDefaultImpl={$for.hasDefaultImpl}, isPartial={$for.isPartial}."
-     +" Return 'semicolon' if the empty body should be terminated by a semicolon (;)."
-     +" Return 'braced-content' if it must use an empty braced block { }."
-     +" Follow standard C#: abstract/interface/partial without body → 'semicolon';"
-     +" class/struct with empty body → 'braced-content'; records can use either, prefer 'semicolon' when possible."
-
-@"Advises whether a given contract should be modelled as an abstract class or
-an interface. Takes a natural description of the shared characteristics.
-Returns a pair: (kind, baseType) where kind is 'class' (abstract) or 'interface',
-and baseType is an optional existing type name that might influence the decision."
-rule choose-abstraction-form
-   for description(literal), existingBaseType(literal) // may be empty
-given:
-  decision:
-    ref(record Tuple<literal, literal>) in none
-        "Given the description \"{$for.description}\" and existingBaseType \"{$for.existingBaseType}\","
-       +" return a pair: (kind, suggestedName)."
-       +" kind must be either 'class' (meaning abstract class) or 'interface'."
-       +" If existingBaseType is not empty, kind must be 'class' because a type can only inherit one base class."
-       +" Otherwise, prefer 'interface' for pure capability contracts (e.g., -able, -ible),"
-       +" and 'class' when shared implementation, common state, or an is-a relationship is described."
-       +" suggestedName is a recommended name for the abstraction (e.g., 'MyServiceBase' for a class, 'IMyService' for an interface)."
-must be:
-  ref(record Tuple<literal, literal>) in none
-      "Return the pair (kind, suggestedName) from the decision: {$given.decision}."
-
-@"Converts a proposed field name into the standard private instance field naming
-convention: _camelCase. (Static private fields may additionally use s_ prefix.)"
-rule normalize-private-field-name
-   for rawName(literal), isStatic(literal) // "true"/"false"
-must be:
+      "If there is a body for the method described by: \"{$description}\". Answer strictly 'true' or 'false'."
+     +"\nFor example, it must NOT have a body if it is abstract, an interface member without default implementation."
+signature:
   ref(literal) in none
-      "Given rawName=\"{$for.rawName}\" and isStatic={$for.isStatic},"
-     +" return the correctly cased field name following .NET conventions:"
-     +" if isStatic='true', prefix with 's_', else prefix with '_'."
-     +" Then ensure the remaining part starts with a lowercase letter (camelCase)."
-     +" For example, 'Count' → '_count', 'IsReady' → '_isReady', static 'Cache' → 's_cache'."
-
-@"Determines the appropriate setter accessibility for a property based on
-immutability intent and external visibility."
-rule property-setter-accessibility
-   for propertyName(literal), isReadOnly(literal),    // "true"/"false" – intended immutability
-       isCollection(literal),                         // "true"/"false"
-       requiredExternalModification(literal)          // "true"/"false"
-must be:
-  ref(tuple<literal,literal>) in none   // (getterAccess, setterAccess)
-      "For a property named \"{$for.propertyName}\":"
-     +" isReadOnly={$for.isReadOnly}, isCollection={$for.isCollection},"
-     +" requiredExternalModification={$for.requiredExternalModification}."
-     +" Return a pair (getterAccessibility, setterAccessibility)."
-     +" If isReadOnly='true' and not a collection, prefer an init-only setter or private set."
-     +" Use init-only when the value is set once during object construction."
-     +" If it is a read-only collection, use a getter that returns an IReadOnlyCollection etc."
-     +" If external modification is allowed, setter should be public; otherwise private or internal."
-     +" getter is typically public; setter can be 'private', 'init', 'internal', or empty string (for public)."
-     +" Values must be valid C# accessor modifiers."
+      "Generate the full method signature (without body) for: \"{$description}\"."
+     +"\nInclude modifiers, return type, method name, parameters, and any generic type constraints."
+     +"\nReturn only the signature line."
+body:
+  if $needsBody is "true" then
+    ref(literal) in none
+        "Generate the body content (without outer braces) for the method described as: \"{$description}\"."
+       +"\nThe body should implement the described behavior. If no specific behavior is given, provide a minimal sensible implementation."
+       +"\nReturn only the body content."
+  else
+    ""
+completeMethod:
+  if $needsBody is "true" then
+    result of concat-string where strings = [
+      $signature, "\n{\n", $body, "\n}"
+    ]
+  else
+    result of concat-string where strings = [
+      $signature, ";"
+    ]
