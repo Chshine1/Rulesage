@@ -1,7 +1,7 @@
 ﻿domain base
 
 @"A generic tuple of two values of generic types t1, t2 respectively."
-record tuple<t1, t2> with val1(t1), val2(t2)
+concept tuple<t1, t2> with val1(t1), val2(t2)
 
 @"Group an array of objects by equivalence of a given key, with a generic param t of array elements, returns the dictionary of groups as an array of tuple<literal, t[]>."
 action group-by<t> on array(t[]), groupKey(literal) returns tuple<literal, t[]>[]

@@ -245,6 +245,73 @@ dotnet run network visualize --input ./Resources/Rules/meta-rules.rsg --output .
 dotnet run network discover --input ./Resources/Rules/meta-rules.rsg --output ./Resources/Rules/dot --label "interpret-project-items:pi" "interpret-type-spec:ts" "interpret-rule-def:rd" "interpret-record-def:rcd" "interpret-action-def:ad"
 ```
 
+## Rule Types: Constraints vs. Decisive
+
+Our system distinguishes two kinds of rules based on how their outputs are used downstream.
+
+### Constraint Rules
+
+Constraint rules express **partial desires** about an object. They produce one or more **natural‑language constraint fragments** — soft recommendations that may be combined with other constraints before the final object is built.
+
+- Output type: `literal` or `literal[]`
+- Annotations hide concrete constraint details; they only say *what aspect* is constrained (e.g., `"Provides constraints for async method signatures"`).
+- They do **not** produce final object properties directly.
+- They are suggestive by default; conflicts are resolved later by priority (compilation correctness > conventions > style).
+- They can be freely combined — concatenating multiple constraint arrays is the primary composition mechanism.
+
+**Example:**
+```text
+@"Constraints for general asynchronous method signatures."
+rule async-method-constraint
+given:
+  naming: "Method name must end with 'Async'."
+  cancel: "Should include a CancellationToken parameter named 'cancellationToken' with default 'default', placed as the last parameter, if the signature can accommodate it without breaking compilation."
+must be:
+  [$naming, $cancel]
+```
+
+### Decisive Rules
+
+Decisive rules produce a **final, self‑contained value** from a closed set of inputs. Their output is **not** merged with outputs from other rules — it is the answer.
+
+- Output type: a concrete literal or record (e.g., `"semicolon"`, a `method-signature` record).
+- All relevant information is carried in the `for` parameters; the rule makes a complete determination.
+- They are used for small, well‑defined judgments where the result space is exclusive and complete.
+- A decisive rule may *consume* the merged output of constraint rules, but it never competes with another decisive rule for the same property.
+
+**Example:**
+```text
+@"Determines whether an empty member body is terminated by a semicolon or empty braces."
+rule resolve-body-terminator
+   for memberKind(literal), isAbstract(literal), hasDefaultImpl(literal), isPartial(literal)
+must be:
+  ref(literal) in none
+      "Given ... return 'semicolon' or 'braced-content'."
+```
+
+### Choosing between them
+
+Ask: **“Could this rule’s output need to merge with another rule’s output about the same object?”**
+
+- **Yes** → Constraint rule. Provide a natural‑language *suggestion*.
+- **No** (the input combination fully determines the answer) → Decisive rule. Provide the *final value*.
+
+### Typical workflow
+
+1. **Collect** – Retrieve all constraint rules relevant to a concept (e.g., `interface-name-constraint`, `async-method-constraint`, `generic-parameter-naming`).
+2. **Concatenate** – Merge their `literal[]` outputs into a single list of constraints.
+3. **Build** – Pass the concatenated constraints (plus any hard inputs) into a decisive rule that generates the final object.
+   ```
+   generate-method-signature (decisive)
+     for purpose(literal), returnType(literal), constraints(literal[])
+   must be:
+     ref(method-signature) in none
+         "Create a method signature that satisfies all given constraints: ..."
+   ```
+
+This keeps each step small: constraint rules describe wishes, and a single decisive call resolves them into a concrete shape.
+
+
 We are building a "ruleset", which is a finite set of records, actions and rules.
 
 The final mission for the ruleset is to "interpret" a "subject" into some records.

@@ -82,77 +82,78 @@ concept attribute-usage with
   constructorArguments(literal[]),    // literal representations
   namedProperties(tuple<literal,literal>[])  // (name, value)
 
-@"Suggests a conventional type parameter name based on the role described."
-rule generic-parameter-naming for roleDescription(literal)
-must be:
-  ref(literal)
-      "A conventional generic type parameter name, given the role description \"{$roleDescription}\"."
-     +"\nUse 'T' for a single, unconstrained parameter, or 'T<Role>' for a parameter of specific role/meaning."
-     +"\nFor example: 'TResult' for a return value; 'TKey', 'TValue' for dictionaries; 'TElement' for collections; etc."
+@"Constraint on a general interface name"
+rule interface-name-constraint given:
+constraint: "A C# interface name must begin with uppercase 'I' and follow PascalCase (e.g., 'IReadable')."
 
-@"Detects if a class needs to implement IDisposable based on owned resources, and if so, get the standard Dispose pattern signatures."
-rule disposable-pattern-required for classDescription(literal)
-given:
-  needsDispose:
-    ref(literal)
-        "Whether the class described by \"{$classDescription}\" own any disposable resources"
-       +" (e.g., streams, connections, unmanaged handles). Return 'true' or 'false'."
-  neededBranch:
-    record tuple<literal, method-signature[]> with
-      val1 = "true",
-      val2 = 
-        ref(method-signature[])
-            "The standard method signatures for the IDisposable pattern:"
-           +"\n- public void Dispose()"
-           +"\n- protected virtual void Dispose(bool disposing)"
-           +"\nReturn them as an array of method-signature records with appropriate modifiers."
-  notNeededBranch:
-    record tuple<literal, method-signature[]> with val1 = "false", val2 = []
-  disposalMethods:
-    result of find-in-dictionary on
-      key = $needsDispose,
-      dictionary = [$neededBranch, $notNeededBranch]
-  result:
-    record tuple<literal, method-signature[]> with
-      val1 = $needsDispose, val2 = $disposalMethods
+@"Provides constraints for general asynchronous method signatures."
+rule async-method-constraints given:
+constraints: [
+  "Method name must end with 'Async'.",
+  "Should include a CancellationToken parameter named 'cancellationToken' with default value 'default', placed as the last parameter."
+]
+
+@"Provides naming constraint for general generic type parameters"
+rule generic-parameter-naming-constraint given:
+constraint: 
+  "For a single unconstrained parameter, use 'T' as the name; or for a specific role: use T<Role> as the name, e.g. TKey, TValue, TResult."
+
+@"Resources in a class that need disposing, categories: managed resources, unmanaged resources or async disposable resources."
+concept disposable-resources with
+  managed(literal), unmanaged(literal), async(literal)
+
+@"Constraints on a class for disposable patterns. Each constraint specifies one member (field or method), combining its signature and core behavior in a single sentence."
+rule disposable-pattern-constraints for classDescription(literal) given:
+  resources:
+    ref(disposable-resources)
+        "The disposable resources from this class description: \"{$classDescription}\"."
+       +"\nDescribe each present resource in natural language, do not infer determined fields if not explicitly given. Use 'none' if a category has no resources."
+  anyResource:
+    if $resources.managed is "none" and $resources.unmanaged is "none" and $resources.async is "none" then
+      then "false"
+      else "true"
+  needIDisposable:
+    if $resources.managed is not "none" or $resources.unmanaged is not "none" then [
+      "Need to implement IDisposable.",
+      "Has a public void Dispose() method implementing IDisposable, which calls Dispose(true) and GC.SuppressFinalize(this)"
+    ]
+    else []
+  needIAsyncDisposable:
+    if $resources.async is not "none" then [
+      "Need to implement IAsyncDisposable.",
+      "Has a public async ValueTask DisposeAsync() method implementing IAsyncDisposable, which calls await DisposeAsyncCore() and GC.SuppressFinalize(this)."
+    ]
+    else []
+  disposeMethodConstraint:
+    if $resources.managed is not "none" or $resources.unmanaged is not "none" then
+      ref(literal[])
+          "Write one sentence (one array element) describing the need of a Dispose(bool disposing) method."
+         +"\nManaged resources: {$resources.managed}. Unmanaged resources: {$resources.unmanaged}."
+         +"\nThe sentence must state the full signature (protected virtual void) and that when disposing is true, it disposes the managed resources, then disposes unmanagedd resources and sets _disposed = true."
+         +"\nIf the class is sealed and has only managed resources, the method can be private and non‑virtual."
+         +"\nIt should be 'Needs a method <signature> with contents <contents>'"
+    else []
+  disposeAsyncCoreConstraint:
+    if $resources.async is not "none" then
+      ref(literal[])
+          "Write one sentence (one array element) describing the need of a DisposeAsyncCore() method."
+         +"\nAsync resources: {$resources.async}."
+         +"\nThe sentence must state the full signature (protected virtual async ValueTask DisposeAsyncCore()) and that it should asynchronously dispose the given resources (e.g., await _client.DisposeAsync()), then set _disposed = true."
+         +"\nIt should be 'Needs a method <signature> with contents <contents>'"
+    else []
+  fixedConstraints: [
+    "Need a field: private bool _disposed; to track disposal state."
+  ]
+  constraints:
+    if $anyResource then
+      result of concat-arrays where arrays = [
+        $fixedConstraints,
+        $needIDisposable, $needIAsyncDisposable,
+        $disposeMethodConstraint, $disposeAsyncCoreConstraint
+      ]
+    else []
 
 ---
-
-@"Generates a valid C# interface name from a base concept description."
-rule derive-interface-name for baseConcept(literal)
-must be:
-  ref(literal)
-      "A suitable C# interface name, given the concept description \"{$for.baseConcept}\". "
-     +"The interface name must begin with uppercase 'I' and follow PascalCase (e.g., 'IReadable')."
-
-@"Adjusts a method signature to conform to async conventions:
-- Method name must end with 'Async'.
-- If the return type is Task/Task<T> and the method is not an event handler,
-  it should accept a CancellationToken parameter with a default value of default."
-rule async-method-conventions
-   for original(method-signature), isEventHandler(literal) // "true"/"false"
-given:
-  adjustedName:
-    ref(literal) in none
-        "If method name \"{$for.original.methodName}\" does not already end with 'Async',"
-       +" return the name with 'Async' appended (preserve PascalCase). Otherwise return it unchanged."
-  needsCancellation:
-    ref(literal) in none
-        "Given return type \"{$for.original.returnType}\" and isEventHandler={$for.isEventHandler},"
-       +" return 'true' if the method should accept a CancellationToken parameter (return type is Task or Task<T> and it is not an event handler)."
-       +" Otherwise return 'false'."
-  enhancedParams:
-    if $given.needsCancellation = "true"
-    then seq append to $for.original.parameters with
-           parameter-definition{ name="cancellationToken", type="CancellationToken", isParams="false", defaultValue="default" }
-    else $for.original.parameters
-must be:
-  ref(method-signature) in none
-      "Create a method-signature where methodName = \"{$given.adjustedName}\","
-     +" returnType = \"{$for.original.returnType}\","
-     +" modifiers = {$for.original.modifiers},"
-     +" parameters = {$given.enhancedParams},"
-     +" genericParameters = {$for.original.genericParameters}."
 
 @"Determines whether a member or type declaration with an empty body should
 be terminated by a semicolon or an empty brace block, according to C# rules:
@@ -225,15 +226,3 @@ must be:
      +" If external modification is allowed, setter should be public; otherwise private or internal."
      +" getter is typically public; setter can be 'private', 'init', 'internal', or empty string (for public)."
      +" Values must be valid C# accessor modifiers."
-
-@"Given a data-holding concept description, returns guidelines encoded as a set of modifier/type choices to favour immutability."
-rule immutability-guidance for dataDescription(literal)
-must be:
-  ref(tuple<literal[], literal[]>)
-      "Based on the description \"{$dataDescription}\", return two lists:"
-     +" (recommendedModifiers, recommendedFeatures)."
-     +" recommendedModifiers are modifiers to apply to the type, e.g., ['sealed'] for a class that should not be inherited,"
-     +" or ['readonly'] for a struct."
-     +" recommendedFeatures are strings from: 'init-only-properties', 'readonly-fields', 'primary-constructor',"
-     +" 'with-expressions', 'IReadOnlyCollection', 'System.Collections.Immutable'."
-     +" Favour init-only setters and readonly fields for data that should not change after construction."
