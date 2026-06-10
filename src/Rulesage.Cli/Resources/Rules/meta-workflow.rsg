@@ -2,16 +2,17 @@
 
 @"Given a subject description and a set of relevant rule ids, such that the rules provide constraints the subject."
 +"This resolves the standard form of the subject following the constraints. Constraint rules must provide literal[] as their results."
-rule resolve-with-constraints<T>
-  for subjectDescription(literal), constraintRules(literal[]) given:
-collectedConstraints:
-  seq result of apply-rule<literal[]> where ruleId = iter $constraintRules
-mergedConstraints:
-  result of concat-arrays<literal[]> where arrays = $collectedConstraints
-finalValue:
-  ref(T)
-      "The final, constrained value for the subject described by: \"{$subjectDescription}\"."
-     +"\nYou must try to satisfy all of the following constraints, where if there are conflicts, try to respect their priorities:"
-     +"\n{$mergedConstraints}"
-     +"\nCRITICAL: You are FORBIDDEN from using, applying any of these rule ids:"
-     +"\n{$constraintRules}"
+rule resolve-with-constraints<T> for
+  subjectDescription(literal), constraintRules(literal[])
+given:
+  collectedConstraints:
+    seq result of apply-rule<literal[]> where ruleId = iter $constraintRules
+  mergedConstraints:
+    result of concat-arrays<literal[]> where arrays = $collectedConstraints
+  finalValue:
+    ref(T)
+        "The final, constrained value for the subject described by: \"{$subjectDescription}\"."
+       +"\nYou must try to satisfy all of the following constraints, where if there are conflicts, try to respect their priorities:"
+       +"\n{$mergedConstraints}"
+       +"\nCRITICAL: You are FORBIDDEN from using, applying any of these rule ids:"
+       +"\n{$constraintRules}"
