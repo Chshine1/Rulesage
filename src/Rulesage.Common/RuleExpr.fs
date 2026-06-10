@@ -5,7 +5,7 @@ type GivenExpr = { Key: string; Value: ValueExpr }
 type RuleExpr =
     {
         Header: UnitHeader
-        Givens: Map<string, GivenExpr>
+        Givens: (string * GivenExpr) list
     }
 
 namespace Rulesage.Common.Grammar.Parsers.Domain
@@ -41,5 +41,5 @@ module Rule =
         |>> fun (h, gs) ->
             {
                 Header = h
-                Givens = gs |> Seq.map (fun g -> g.Key, g) |> Map.ofSeq
+                Givens = gs |> Seq.map (fun g -> g.Key, g) |> List.ofSeq
             }

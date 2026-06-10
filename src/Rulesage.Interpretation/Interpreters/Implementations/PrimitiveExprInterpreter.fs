@@ -14,7 +14,7 @@ type PrimitiveExprInterpreter(varItp: IExprInterpreter<VarExpr>, stringItp: IExp
                 task {
                     let interpret = (this :> IExprInterpreter<PrimitiveExpr>).InterpretAsync ctx
                     let! r = a |> Seq.map interpret |> whenAll ctx.CtSource
-                    return SynthesizedValue.Array r
+                    return InterpretedValue.Array r
                 }
             | PrimitiveExpr.StringLiteral s -> stringItp.InterpretAsync ctx s
             | PrimitiveExpr.Ref r -> stringItp.InterpretAsync ctx r.Desc

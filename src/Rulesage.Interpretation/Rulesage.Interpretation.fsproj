@@ -34,9 +34,9 @@
       
         <Compile Include="Interpreters\Implementations\Domain\ValueExprInterpreter.fs" />
       
-        <Compile Include="IRuleSynthesizer.fs" />
+        <Compile Include="IRuleInterpreter.fs" />
       
-        <Compile Include="RuleSynthesizer.fs" />
+        <Compile Include="RuleInterpreter.fs" />
     </ItemGroup>
 
     <ItemGroup>

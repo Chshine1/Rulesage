@@ -12,24 +12,26 @@ open Rulesage.Synthesis.Types
 
 type ActionService(actionRepository: IActionRepository) =
     let actionsCache: Map<Identifier, ActionExpr> = Map.empty
-    
-    let findActionByIdAsync (cancellationToken: CancellationToken) (actionId: Identifier): Task<ActionExpr> =
+
+    let findActionByIdAsync (cancellationToken: CancellationToken) (actionId: Identifier) : Task<ActionExpr> =
         task {
             let oa = actionsCache |> Map.tryFind actionId
+
             match oa with
             | Some a -> return a
             | None ->
-                let! result = actionRepository.FindByIdsAsync([actionId], cancellationToken)
+                let! result = actionRepository.FindByIdsAsync([ actionId ], cancellationToken)
                 return result.First()
         }
-    
+
     interface IActionService with
         member _.CallAsync cancellationToken actionId args =
             task {
                 let! action = findActionByIdAsync cancellationToken actionId
                 let script = Script()
+
                 for arg in args do
-                    script.Globals[arg.Key] <- arg.Value;
-                return script.DoString(action.Script).ToObject<SynthesizedValue>();
+                    script.Globals[arg.Key] <- arg.Value
+
+                return script.DoString(action.Script).ToObject<InterpretedValue>()
             }
-            

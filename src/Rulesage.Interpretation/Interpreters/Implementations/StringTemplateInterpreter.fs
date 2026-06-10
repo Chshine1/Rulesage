@@ -24,5 +24,5 @@ type StringTemplateInterpreter(varItp: IExprInterpreter<VarExpr>, jsonOptions: J
                     )
 
                 let! result = parts |> whenAll ctx.CtSource
-                return SynthesizedValue.Leaf(result |> String.concat "")
+                return InterpretedValue.Literal(result |> String.concat "")
             }

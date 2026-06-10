@@ -5,9 +5,9 @@ open Rulesage.Common.Grammar.Ast
 open Rulesage.Synthesis.Interpreters.Abstractions
 open Rulesage.Synthesis.Services.Abstractions
 
-type RuleSynthesizer(nlTaskResolver: INlTaskResolver, valueItp: IExprInterpreter<ValueExpr>) =
-    interface IRuleSynthesizer with
-        member this.SynthesizeNlTaskAsync(nlTask, cancellationToken) =
+type RuleInterpreter(nlTaskResolver: INlTaskResolver, valueItp: IExprInterpreter<ValueExpr>) =
+    interface IRuleInterpreter with
+        member this.InterpretSubjectAsync(nlTask, cancellationToken) =
             task {
                 let! rule = nlTask |> nlTaskResolver.ResolveAsync cancellationToken
 
@@ -16,8 +16,7 @@ type RuleSynthesizer(nlTaskResolver: INlTaskResolver, valueItp: IExprInterpreter
                         CtSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
                         Rule = rule
                         ForArgs = Map.empty
-
                     }
 
-                return! valueItp.InterpretAsync ctx rule.MustBe
+                return! valueItp.InterpretAsync ctx (rule.Givens |> Seq.last |> snd |> _.Value)
             }

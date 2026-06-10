@@ -6,4 +6,4 @@ open Rulesage.Synthesis.Services.Abstractions
 type NlTaskResolver(operationComposer: IRuleComposer) =
     interface INlTaskResolver with
         member _.ResolveAsync cancellationToken nlTask =
-            operationComposer.ComposeAsync (nlTask, cancellationToken)
+            operationComposer.ComposeAsync(nlTask, cancellationToken)

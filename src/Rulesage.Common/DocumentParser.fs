@@ -8,7 +8,7 @@ open Rulesage.Common.Grammar.Parsers.Domain.Concept
 open Rulesage.Common.Grammar.Parsers.Domain.Rule
 open Rulesage.Common.Grammar.Parsers.Lexer
 
-type Document =
+type RulesetSection =
     {
         Rules: RuleExpr list
         Records: ConceptExpr list
@@ -36,7 +36,7 @@ module DocumentParser =
     let private pDocument: Parser<AstNode list> =
         spaces >>. many (pAstNode .>> spaces1) .>> eof
 
-    let Parse (input: string) : Document =
+    let Parse (input: string) : RulesetSection =
         match run pDocument input with
         | Success(nodes, _, _) ->
             let rules =

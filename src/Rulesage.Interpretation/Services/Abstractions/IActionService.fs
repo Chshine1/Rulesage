@@ -5,9 +5,9 @@ open System.Threading.Tasks
 open Rulesage.Common.Grammar
 open Rulesage.Synthesis.Types
 
-type INodeService =
-    abstract member BuildAsync:
+type IActionService =
+    abstract member CallAsync:
         cancellationToken: CancellationToken ->
-        nodeId: Identifier ->
-        whereValues: Map<string, SynthesizedValue> ->
-            Task<SynthesizedNode>
+        actionId: Identifier ->
+        args: Map<string, InterpretedValue> ->
+            Task<InterpretedValue>

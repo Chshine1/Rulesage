@@ -12,7 +12,7 @@ public static class ServiceCollectionExtensions
         {
             collection.Configure(configureOptions ?? (_ => { }));
 
-            collection.AddScoped<IRuleRetrievalService, RuleRetrievalService>();
+            collection.AddScoped<IRulesetRetrievalService, RulesetRetrievalService>();
 
             return collection;
         }

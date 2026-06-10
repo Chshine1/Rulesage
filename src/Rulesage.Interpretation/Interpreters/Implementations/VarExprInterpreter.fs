@@ -11,7 +11,11 @@ type VarExprInterpreter(givenItp: IExprInterpreter<GivenExpr>) =
                 let! source =
                     (match expr.Source with
                      | VarSource.For -> ctx.ForArgs |> Map.find expr.Key |> Task.FromResult
-                     | VarSource.Given -> ctx.Rule.Givens |> Map.find expr.Key |> givenItp.InterpretAsync ctx)
+                     | VarSource.Given ->
+                         ctx.Rule.Givens
+                         |> Seq.find (fun (k, _) -> k = expr.Key)
+                         |> snd
+                         |> givenItp.InterpretAsync ctx)
 
                 return (source, expr.Fields) ||> Seq.fold _.GetNodeField
             }

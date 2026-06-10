@@ -21,7 +21,7 @@ type SeqExprInterpreter
     let processSeq
         (ctx: SynthesisContext)
         (args: IterArgBlock)
-        (op: Map<string, SynthesizedValue> -> Task<SynthesizedValue>)
+        (op: Map<string, InterpretedValue> -> Task<InterpretedValue>)
         =
         task {
             let! synthesizedArgs =
@@ -43,24 +43,24 @@ type SeqExprInterpreter
                 | [] -> 1
                 | (_, _, firstArr) :: _ ->
                     match firstArr with
-                    | SynthesizedValue.Array items -> items.Length
+                    | InterpretedValue.Array items -> items.Length
                     | _ -> failwith "Iter parameter value must be an array"
 
             for key, _, arrVal in iterArgs do
                 match arrVal with
-                | SynthesizedValue.Array items ->
+                | InterpretedValue.Array items ->
                     if items.Length <> length then
                         failwithf
                             $"Iter parameter '%s{key}' array length mismatch: expected %d{length}, got %d{items.Length}"
                 | _ -> failwithf $"Iter parameter '%s{key}' must be an array"
 
-            let buildMap (idx: int) : Map<string, SynthesizedValue> =
+            let buildMap (idx: int) : Map<string, InterpretedValue> =
                 synthesizedArgs
                 |> List.map (fun (key, iter, value) ->
                     let paramValue =
                         if iter then
                             match value with
-                            | SynthesizedValue.Array items -> items[idx]
+                            | InterpretedValue.Array items -> items[idx]
                             | _ -> failwith "unexpected"
                         else
                             value
@@ -71,7 +71,7 @@ type SeqExprInterpreter
 
             let tasks = [| for i in 0 .. length - 1 -> op (buildMap i) |]
             let! results = tasks |> whenAll ctx.CtSource
-            return SynthesizedValue.Array results
+            return InterpretedValue.Array results
         }
 
     interface IExprInterpreter<SeqExpr> with
@@ -86,7 +86,7 @@ type SeqExprInterpreter
                     (fun withValues ->
                         task {
                             let! node = nodeService.BuildAsync ct (fst record) withValues
-                            return node |> SynthesizedValue.Node
+                            return node |> InterpretedValue.Concept
                         }
                     )
             | SeqExpr.ResultOf(action, args) -> processSeq ctx args (actionService.CallAsync ct (fst action))
@@ -96,7 +96,7 @@ type SeqExprInterpreter
                     args
                     (fun withValues ->
                         task {
-                            let! rs = ruleRepository.FindByIdsAsync([ruleId], ct)
+                            let! rs = ruleRepository.FindByIdsAsync([ ruleId ], ct)
                             let subRule = rs |> Seq.head
 
                             let subCtx: SynthesisContext =
@@ -106,6 +106,6 @@ type SeqExprInterpreter
                                     ForArgs = withValues
                                 }
 
-                            return! valueItp.InterpretAsync subCtx subRule.MustBe
+                            return! valueItp.InterpretAsync subCtx (subRule.Givens |> Seq.last |> snd |> _.Value)
                         }
                     )

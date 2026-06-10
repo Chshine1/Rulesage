@@ -18,7 +18,7 @@ type DynamicExprInterpreter
         nodeService: INodeService,
         ruleRepository: IRuleRepository
     ) =
-    let synthesizeArgsAsync (ctx: SynthesisContext) (args: ArgBlock) : Task<Map<string, SynthesizedValue>> =
+    let synthesizeArgsAsync (ctx: SynthesisContext) (args: ArgBlock) : Task<Map<string, InterpretedValue>> =
         task {
             let paramTasks =
                 args
@@ -40,12 +40,12 @@ type DynamicExprInterpreter
                 | DynamicExpr.Record(record, args) ->
                     let! withValues = synthesizeArgsAsync ctx args
                     let! node = nodeService.BuildAsync ctx.CtSource.Token (fst record) withValues
-                    return node |> SynthesizedValue.Node
+                    return node |> InterpretedValue.Concept
                 | DynamicExpr.ResultOf(action, args) ->
                     let! whereValues = synthesizeArgsAsync ctx args
                     return! actionService.CallAsync ctx.CtSource.Token (fst action) whereValues
                 | DynamicExpr.Satisfying(ruleId, args) ->
-                    let! rs = ruleRepository.FindByIdsAsync([ruleId], ctx.CtSource.Token)
+                    let! rs = ruleRepository.FindByIdsAsync([ ruleId ], ctx.CtSource.Token)
                     let subRule = rs |> Seq.head
                     let! whereValues = synthesizeArgsAsync ctx args
 
