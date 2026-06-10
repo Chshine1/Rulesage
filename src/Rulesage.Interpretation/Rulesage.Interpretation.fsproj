@@ -12,7 +12,7 @@
 
         <Compile Include="Services\Abstractions\INodeService.fs" />
 
-        <Compile Include="Services\Abstractions\INlTaskResolver.fs" />
+        <Compile Include="Services\Abstractions\ISubjectResolver.fs" />
 
         <Compile Include="Services\Implementations\NlTaskResolver.fs" />
 
@@ -21,6 +21,8 @@
         <Compile Include="SynthesisContext.fs" />
       
         <Compile Include="Interpreters\Abstractions\IExprInterpreter.fs" />
+      
+        <Compile Include="Interpreters\Abstractions\IDynamicUnitEvaluator.fs" />
       
         <Compile Include="Interpreters\Implementations\VarExprInterpreter.fs" />
       
@@ -33,6 +35,8 @@
         <Compile Include="Interpreters\Implementations\Domain\SeqExprInterpreter.fs" />
       
         <Compile Include="Interpreters\Implementations\Domain\ValueExprInterpreter.fs" />
+      
+        <Compile Include="Interpreters\Implementations\Evaluators\RuleEvaluator.fs" />
       
         <Compile Include="IRuleInterpreter.fs" />
       

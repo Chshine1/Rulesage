@@ -1,10 +1,10 @@
 ﻿namespace Rulesage.Synthesis.Interpreters.Implementations.Domain
 
-open System.Threading
 open System.Threading.Tasks
 open Rulesage.Common.Grammar.Ast
 open Rulesage.Common.Repositories.Abstractions
 open Rulesage.Common.Utils.TaskUtils
+open Rulesage.Interpretation.Interpreters.Abstractions
 open Rulesage.Synthesis
 open Rulesage.Synthesis.Interpreters.Abstractions
 open Rulesage.Synthesis.Services.Abstractions
@@ -13,10 +13,10 @@ open Rulesage.Synthesis.Types
 type DynamicExprInterpreter
     (
         primitiveItp: IExprInterpreter<PrimitiveExpr>,
-        valueItp: IExprInterpreter<ValueExpr>,
         actionService: IActionService,
         nodeService: INodeService,
-        ruleRepository: IRuleRepository
+        ruleRepository: IRuleRepository,
+        ruleEvaluator: IDynamicUnitEvaluator<RuleExpr>
     ) =
     let synthesizeArgsAsync (ctx: SynthesisContext) (args: ArgBlock) : Task<Map<string, InterpretedValue>> =
         task {
@@ -47,14 +47,6 @@ type DynamicExprInterpreter
                 | DynamicExpr.Satisfying(ruleId, args) ->
                     let! rs = ruleRepository.FindByIdsAsync([ ruleId ], ctx.CtSource.Token)
                     let subRule = rs |> Seq.head
-                    let! whereValues = synthesizeArgsAsync ctx args
-
-                    let subCtx: SynthesisContext =
-                        {
-                            CtSource = CancellationTokenSource.CreateLinkedTokenSource(ctx.CtSource.Token)
-                            Rule = subRule
-                            ForArgs = whereValues
-                        }
-
-                    return! valueItp.InterpretAsync subCtx subRule.MustBe
+                    let! forValues = synthesizeArgsAsync ctx args
+                    return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token subRule Map.empty forValues
             }

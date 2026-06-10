@@ -1,10 +1,10 @@
 ﻿namespace Rulesage.Synthesis.Interpreters.Implementations.Domain
 
-open System.Threading
 open System.Threading.Tasks
 open Rulesage.Common.Grammar.Ast
 open Rulesage.Common.Repositories.Abstractions
 open Rulesage.Common.Utils.TaskUtils
+open Rulesage.Interpretation.Interpreters.Abstractions
 open Rulesage.Synthesis
 open Rulesage.Synthesis.Interpreters.Abstractions
 open Rulesage.Synthesis.Services.Abstractions
@@ -13,10 +13,10 @@ open Rulesage.Synthesis.Types
 type SeqExprInterpreter
     (
         primitiveItp: IExprInterpreter<PrimitiveExpr>,
-        valueItp: IExprInterpreter<ValueExpr>,
         actionService: IActionService,
         nodeService: INodeService,
-        ruleRepository: IRuleRepository
+        ruleRepository: IRuleRepository,
+        ruleEvaluator: IDynamicUnitEvaluator<RuleExpr>
     ) =
     let processSeq
         (ctx: SynthesisContext)
@@ -94,18 +94,10 @@ type SeqExprInterpreter
                 processSeq
                     ctx
                     args
-                    (fun withValues ->
+                    (fun forValues ->
                         task {
                             let! rs = ruleRepository.FindByIdsAsync([ ruleId ], ct)
                             let subRule = rs |> Seq.head
-
-                            let subCtx: SynthesisContext =
-                                {
-                                    CtSource = CancellationTokenSource.CreateLinkedTokenSource(ctx.CtSource.Token)
-                                    Rule = subRule
-                                    ForArgs = withValues
-                                }
-
-                            return! valueItp.InterpretAsync subCtx (subRule.Givens |> Seq.last |> snd |> _.Value)
+                            return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token subRule Map.empty forValues
                         }
                     )
