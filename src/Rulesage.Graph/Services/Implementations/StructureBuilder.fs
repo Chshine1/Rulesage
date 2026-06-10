@@ -62,18 +62,18 @@ type StructureBuilder() =
                     | Dynamic d ->
                         let source, args =
                             match d with
-                            | DynamicExpr.Satisfying(ruleId, a) -> NodeId.Rule ruleId, a |> Seq.map _.Value
+                            | DynamicExpr.InterpretationOf(ruleId, a) -> NodeId.Rule ruleId, a |> Seq.map _.Value
                             | DynamicExpr.ResultOf(action, a) -> NodeId.Action(fst action), a |> Seq.map _.Value
-                            | DynamicExpr.Record(record, a) -> NodeId.Record(fst record), a |> Seq.map _.Value
+                            | DynamicExpr.Concept(record, a) -> NodeId.Record(fst record), a |> Seq.map _.Value
 
                         args |> Seq.iter (addRefDeps id)
                         structuralGraph.AddEdge(Edge(source, id)) |> ignore
                     | Seq s ->
                         let source, args =
                             match s with
-                            | SeqExpr.Satisfying(ruleId, a) -> NodeId.Rule ruleId, a |> Seq.map _.Value
+                            | SeqExpr.InterpretationOf(ruleId, a) -> NodeId.Rule ruleId, a |> Seq.map _.Value
                             | SeqExpr.ResultOf(action, a) -> NodeId.Action(fst action), a |> Seq.map _.Value
-                            | SeqExpr.Record(record, a) -> NodeId.Record(fst record), a |> Seq.map _.Value
+                            | SeqExpr.Concept(record, a) -> NodeId.Record(fst record), a |> Seq.map _.Value
 
                         args |> Seq.iter (addRefDeps id)
                         structuralGraph.AddEdge(Edge(source, id)) |> ignore

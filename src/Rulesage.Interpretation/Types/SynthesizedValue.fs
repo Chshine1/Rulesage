@@ -11,7 +11,8 @@ type InterpretedValue =
     member s.GetNodeField(fieldKey: string) : InterpretedValue =
         match s with
         | Concept i -> i.Arguments |> Map.find fieldKey
-        | _ -> failwith "A value that's not a node cannot extract fields"
+        | Array a -> a |> Array.map (fun e -> e.GetNodeField fieldKey) |> InterpretedValue.Array
+        | _ -> failwith "Literal values cannot extract fields"
 
 
 and ConceptInstance =

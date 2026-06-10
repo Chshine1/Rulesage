@@ -14,6 +14,7 @@ type RuleEvaluator(valueItp: IExprInterpreter<ValueExpr>) =
                     {
                         CtSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
                         Rule = expr
+                        GenericArgs = genericArgs
                         ForArgs = args
                     }
 

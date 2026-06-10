@@ -4,7 +4,7 @@ open Rulesage.Common.Grammar.Ast
 open Rulesage.Interpretation.Interpreters.Abstractions
 open Rulesage.Synthesis.Types
 
-type ConceptEvaluator =
+type ConceptEvaluator() =
     interface IDynamicUnitEvaluator<ConceptExpr> with
         member this.EvaluateAsync _ expr genericArgs args =
             task {

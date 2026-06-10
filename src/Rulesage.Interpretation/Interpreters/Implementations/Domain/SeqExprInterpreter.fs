@@ -80,7 +80,7 @@ type SeqExprInterpreter
             let ct = ctx.CtSource.Token
 
             match expr with
-            | SeqExpr.Record((conceptId, gArgs), args) ->
+            | SeqExpr.Concept((conceptId, gArgs), args) ->
                 processSeq
                     ctx
                     args
@@ -108,13 +108,13 @@ type SeqExprInterpreter
                                 actionEvaluator.EvaluateAsync ctx.CtSource.Token (action |> Seq.head) gArgs whereValues
                         }
                     )
-            | SeqExpr.Satisfying(ruleId, args) ->
+            | SeqExpr.InterpretationOf((ruleId, gArgs), args) ->
                 processSeq
                     ctx
                     args
                     (fun forValues ->
                         task {
                             let! rs = ruleRepository.FindByIdsAsync([ ruleId ], ct)
-                            return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token (rs |> Seq.head) [] forValues
+                            return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token (rs |> Seq.head) gArgs forValues
                         }
                     )

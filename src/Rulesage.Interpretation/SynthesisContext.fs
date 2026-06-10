@@ -8,5 +8,6 @@ type SynthesisContext =
     {
         CtSource: CancellationTokenSource
         Rule: RuleExpr
+        GenericArgs: TypeExpr list
         ForArgs: Map<string, InterpretedValue>
     }

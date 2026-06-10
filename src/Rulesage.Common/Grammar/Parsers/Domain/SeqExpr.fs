@@ -12,9 +12,9 @@ type IterArgExpr =
 type IterArgBlock = IterArgExpr list
 
 type SeqExpr =
-    | Satisfying of ruleId: Identifier * args: IterArgBlock
-    | ResultOf of action: (Identifier * TypeExpr list) * args: IterArgBlock
-    | Record of record: (Identifier * TypeExpr list) * args: IterArgBlock
+    | Concept of closedConcept: (Identifier * TypeExpr list) * args: IterArgBlock
+    | ResultOf of closedAction: (Identifier * TypeExpr list) * args: IterArgBlock
+    | InterpretationOf of closedRule: (Identifier * TypeExpr list) * args: IterArgBlock
 
 namespace Rulesage.Common.Grammar.Parsers.Domain
 
@@ -53,10 +53,10 @@ module Seq =
         >>. s1
         >>. choice
                 [
-                    skipString "interpretation of" >>. s1 >>. pId .>>. (pIterArgBlock "where")
-                    |>> SeqExpr.Satisfying
+                    skipString "concept" >>. s1 >>. pImplId .>>. (pIterArgBlock "with")
+                    |>> SeqExpr.Concept
                     skipString "result of" >>. s1 >>. pImplId .>>. (pIterArgBlock "where")
                     |>> SeqExpr.ResultOf
-                    skipString "record" >>. s1 >>. pImplId .>>. (pIterArgBlock "with")
-                    |>> SeqExpr.Record
+                    skipString "interpretation of" >>. s1 >>. pImplId .>>. (pIterArgBlock "where")
+                    |>> SeqExpr.InterpretationOf
                 ]

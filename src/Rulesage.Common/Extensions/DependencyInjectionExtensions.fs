@@ -12,7 +12,6 @@ type ServiceCollectionExtensions =
             .AddScoped<IConceptRepository, RecordRepository>()
             .AddScoped<IActionRepository, ActionRepository>()
             .AddScoped<IRuleRepository, RuleRepository>()
-            .AddScoped<ICommunityRepository, CommunityRepository>()
         |> ignore
 
         services

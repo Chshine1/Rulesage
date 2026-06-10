@@ -38,16 +38,16 @@ type DynamicExprInterpreter
         member _.InterpretAsync ctx expr =
             task {
                 match expr with
-                | DynamicExpr.Record((id, gArgs), args) ->
+                | DynamicExpr.Concept((conceptId, gArgs), args) ->
                     let! withValues = synthesizeArgsAsync ctx args
-                    let! concept = conceptRepository.FindByIdsAsync([ id ], ctx.CtSource.Token)
+                    let! concept = conceptRepository.FindByIdsAsync([ conceptId ], ctx.CtSource.Token)
                     return! conceptEvaluator.EvaluateAsync ctx.CtSource.Token (concept |> Seq.head) gArgs withValues
-                | DynamicExpr.ResultOf((id, gArgs), args) ->
+                | DynamicExpr.ResultOf((actionId, gArgs), args) ->
                     let! whereValues = synthesizeArgsAsync ctx args
-                    let! action = actionRepository.FindByIdsAsync([ id ], ctx.CtSource.Token)
+                    let! action = actionRepository.FindByIdsAsync([ actionId ], ctx.CtSource.Token)
                     return! actionEvaluator.EvaluateAsync ctx.CtSource.Token (action |> Seq.head) gArgs whereValues
-                | DynamicExpr.Satisfying(ruleId, args) ->
+                | DynamicExpr.InterpretationOf((ruleId, gArgs), args) ->
                     let! forValues = synthesizeArgsAsync ctx args
                     let! rs = ruleRepository.FindByIdsAsync([ ruleId ], ctx.CtSource.Token)
-                    return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token (rs |> Seq.head) [] forValues
+                    return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token (rs |> Seq.head) gArgs forValues
             }

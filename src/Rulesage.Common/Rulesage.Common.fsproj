@@ -25,11 +25,9 @@
         <Compile Include="Repositories\Abstractions\IConceptRepository.fs" />
         <Compile Include="Repositories\Abstractions\IActionRepository.fs" />
         <Compile Include="Repositories\Abstractions\IRuleRepository.fs" />
-        <Compile Include="Repositories\Abstractions\ICommunityRepository.fs" />
         <Compile Include="Repositories\Implementations\RecordRepository.fs" />
         <Compile Include="Repositories\Implementations\ActionRepository.fs" />
         <Compile Include="Repositories\Implementations\RuleRepository.fs" />
-        <Compile Include="Repositories\Implementations\CommunityRepository.fs" />
         <Compile Include="Extensions\DependencyInjectionExtensions.fs" />
     </ItemGroup>
 

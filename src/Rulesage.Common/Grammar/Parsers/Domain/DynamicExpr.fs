@@ -7,9 +7,9 @@ type ArgExpr = { Key: string; Value: PrimitiveExpr }
 type ArgBlock = ArgExpr list
 
 type DynamicExpr =
-    | Satisfying of ruleId: Identifier * args: ArgBlock
-    | ResultOf of action: (Identifier * TypeExpr list) * args: ArgBlock
-    | Record of record: (Identifier * TypeExpr list) * args: ArgBlock
+    | Concept of closedConcept: (Identifier * TypeExpr list) * args: ArgBlock
+    | ResultOf of closedAction: (Identifier * TypeExpr list) * args: ArgBlock
+    | InterpretationOf of closedRule: (Identifier * TypeExpr list) * args: ArgBlock
 
 
 namespace Rulesage.Common.Grammar.Parsers.Domain
@@ -42,10 +42,10 @@ module Dynamic =
     let pDynamicExpr: Parser<DynamicExpr> =
         choice
             [
-                skipString "interpretation of" >>. s1 >>. pId .>>. (pArgBlock "where")
-                |>> DynamicExpr.Satisfying
+                skipString "concept" >>. s1 >>. pImplId .>>. (pArgBlock "with")
+                |>> DynamicExpr.Concept
                 skipString "result of" >>. s1 >>. pImplId .>>. (pArgBlock "where")
                 |>> DynamicExpr.ResultOf
-                skipString "record" >>. s1 >>. pImplId .>>. (pArgBlock "with")
-                |>> DynamicExpr.Record
+                skipString "interpretation of" >>. s1 >>. pImplId .>>. (pArgBlock "where")
+                |>> DynamicExpr.InterpretationOf
             ]

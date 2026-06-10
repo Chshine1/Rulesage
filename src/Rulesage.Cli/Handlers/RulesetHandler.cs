@@ -6,7 +6,6 @@ using Rulesage.Shared.Services.Abstractions.TextCleaner;
 namespace Rulesage.Cli.Handlers;
 
 public class RulesetHandler(
-    ICommunityRepository communityRepository,
     IConceptRepository conceptRepository,
     IActionRepository actionRepository,
     IRuleRepository ruleRepository,
@@ -19,7 +18,6 @@ public class RulesetHandler(
     {
         var document = DocumentParser.Parse(await File.ReadAllTextAsync(documentPath, cancellationToken));
 
-        await communityRepository.SaveAsync(document.Communities, cancellationToken);
         await conceptRepository.SaveAsync(document.Records, cancellationToken);
         await actionRepository.SaveAsync(document.Actions, cancellationToken);
         await ruleRepository.SaveAsync(document.Rules, cancellationToken);
@@ -38,15 +36,15 @@ public class RulesetHandler(
         var actions = await actionRepository.FindOrderByCosineDistanceAsync(community, embedding, 0, take, cancellationToken);
         var rules = await ruleRepository.FindOrderByCosineDistanceAsync(community, embedding, 0, take, cancellationToken);
 
-        var ids = records.Select(r => ("Record", r.Item1.Id, r.Item2)).Concat(
-                actions.Select(r => ("Action", r.Item1.Id, r.Item2))).Concat(
-                rules.Select(r => ("Rule", r.Item1.Id, r.Item2)))
+        var ids = records.Select(r => ("Record", r.Item1.Header.Name, r.Item2)).Concat(
+                actions.Select(r => ("Action", r.Item1.Header.Name, r.Item2))).Concat(
+                rules.Select(r => ("Rule", r.Item1.Header.Name, r.Item2)))
             .OrderByDescending(t => t.Item3)
             .Take(take);
 
         foreach (var tp in ids)
         {
-            Console.WriteLine($"- {tp.Item1,-8} Id: {tp.Id,-24}  Similarity: {tp.Item3:F4}");
+            Console.WriteLine($"- {tp.Item1,-8} Id: {tp.Name,-24}  Similarity: {tp.Item3:F4}");
         }
     }
 }
