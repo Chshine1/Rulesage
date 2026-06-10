@@ -18,8 +18,7 @@ concept class-header with
   implementedInterfaces(literal[]),
   genericParameters(generic-parameter-definition[])  // empty if none
 
-@"A single generic type parameter with its constraints.
-Used inside class-header or method-signature."
+@"A single generic type parameter with its constraints. Used inside class-header or method-signature."
 concept generic-parameter-definition with
   name(literal),                      // e.g., "T"
   constraints(literal[])              // e.g., ["class", "new()", "IComparable"]
@@ -181,17 +180,17 @@ completeClass:
 @"Assembles a complete method declaration as the full literal string, from a semantic description."
 rule compose-method-declaration for description(literal) given:
 needsBody:
-  ref(literal) in none
+  ref(literal)
       "If there is a body for the method described by: \"{$description}\". Answer strictly 'true' or 'false'."
      +"\nFor example, it must NOT have a body if it is abstract, an interface member without default implementation."
 signature:
-  ref(literal) in none
+  ref(literal)
       "Generate the full method signature (without body) for: \"{$description}\"."
      +"\nInclude modifiers, return type, method name, parameters, and any generic type constraints."
      +"\nReturn only the signature line."
 body:
   if $needsBody is "true" then
-    ref(literal) in none
+    ref(literal)
         "Generate the body content (without outer braces) for the method described as: \"{$description}\"."
        +"\nThe body should implement the described behavior. If no specific behavior is given, provide a minimal sensible implementation."
        +"\nReturn only the body content."

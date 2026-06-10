@@ -16,7 +16,7 @@ type RecordRepository(dataSource: NpgsqlDataSource, jsonOptions: JsonSerializerO
 
     let deserialize (json: string) : 'T =
         JsonSerializer.Deserialize<'T>(json, jsonOptions)
-    
+
     let serialize target : string =
         JsonSerializer.Serialize(target, jsonOptions)
 

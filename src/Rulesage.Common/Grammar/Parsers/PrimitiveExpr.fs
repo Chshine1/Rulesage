@@ -3,7 +3,6 @@
 type RefExpr =
     {
         ExpctedType: TypeExpr
-        Community: string
         Desc: StringTemplate
     }
 
@@ -18,7 +17,6 @@ namespace Rulesage.Common.Grammar.Parsers
 open FParsec
 open Rulesage.Common.Grammar
 open Rulesage.Common.Grammar.Ast
-open Rulesage.Common.Grammar.Parsers.Lexer
 open Rulesage.Common.Grammar.Parsers.Strings
 open Rulesage.Common.Grammar.Parsers.Types
 open Rulesage.Common.Grammar.Parsers.Vars
@@ -32,17 +30,8 @@ module Primitives =
         >>. s
         >>. between (skipChar '(') (skipChar ')') (s >>. pTypeExpr .>> s)
         .>> s1
-        .>> skipString "in"
-        .>> spaces1
-        .>>. pId
-        .>> s1
         .>>. pSingleLineString
-        |>> fun ((t, c), s) ->
-            {
-                ExpctedType = t
-                Community = c
-                Desc = s
-            }
+        |>> fun (t, s) -> { ExpctedType = t; Desc = s }
 
     let pPrimitiveExpr, private pPrimitiveExprRef =
         createParserForwardedToRef<PrimitiveExpr, unit> ()

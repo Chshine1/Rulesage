@@ -15,7 +15,7 @@
         <Compile Include="Grammar\Parsers\Domain\DynamicExpr.fs" />
         <Compile Include="Grammar\Parsers\Domain\SeqExpr.fs" />
         <Compile Include="Grammar\Parsers\Domain\ValueExpr.fs" />
-        <Compile Include="Grammar\Parsers\Domain\RuleExpr.fs" />
+        <Compile Include="Grammar\Parsers\Domain\HeaderExpr.fs" />
         <Compile Include="Repositories\Abstractions\IDocumentRepository.fs" />
         <Compile Include="Repositories\Abstractions\IRecordRepository.fs" />
         <Compile Include="Repositories\Abstractions\IActionRepository.fs" />
@@ -26,6 +26,9 @@
         <Compile Include="Repositories\Implementations\RuleRepository.fs" />
         <Compile Include="Repositories\Implementations\CommunityRepository.fs" />
         <Compile Include="Utils\TaskUtils.fs" />
+        <Compile Include="ConceptExpr.fs" />
+        <Compile Include="ActionExpr.fs" />
+        <Compile Include="RuleExpr.fs" />
         <Compile Include="DocumentParser.fs" />
         <Compile Include="Extensions\DependencyInjectionExtensions.fs" />
     </ItemGroup>

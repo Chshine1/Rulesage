@@ -16,7 +16,7 @@ type ActionRepository(dataSource: NpgsqlDataSource, jsonOptions: JsonSerializerO
 
     let deserialize (json: string) : 'T =
         JsonSerializer.Deserialize<'T>(json, jsonOptions)
-    
+
     let serialize target : string =
         JsonSerializer.Serialize(target, jsonOptions)
 
@@ -205,8 +205,7 @@ type ActionRepository(dataSource: NpgsqlDataSource, jsonOptions: JsonSerializerO
                 let annotations = actionsArray |> Array.map _.Annotation
                 let scripts = actionsArray |> Array.map _.Script
 
-                let genericParamsJson =
-                    actionsArray |> Array.map _.GenericParams |> serialize
+                let genericParamsJson = actionsArray |> Array.map _.GenericParams |> serialize
 
                 let forsJson = actionsArray |> Array.map _.Fors |> serialize
                 let returnsJson = actionsArray |> Array.map _.Returns |> serialize
