@@ -5,14 +5,14 @@ using Rulesage.Shared.Services.Abstractions;
 
 namespace Rulesage.Composition.Services.Implementations;
 
-public class CompositionContextBuilder(ICommunityRepository communityRepository, IRecordRepository recordRepository, IActionRepository actionRepository, IRuleRepository ruleRepository, IEmbeddingService embeddingService) : ICompositionContextBuilder
+public class CompositionContextBuilder(ICommunityRepository communityRepository, IConceptRepository conceptRepository, IActionRepository actionRepository, IRuleRepository ruleRepository, IEmbeddingService embeddingService) : ICompositionContextBuilder
 {
     public async Task<CompositionContext> BuildAsync(string contextCommunity, string nlStructure, CancellationToken cancellationToken = default)
     {
         var query = embeddingService.GetEmbedding(nlStructure);
         
         var communities = await communityRepository.FindOrderByCosineDistanceAsync(contextCommunity, query, 0, 10, cancellationToken);
-        var records = await recordRepository.FindOrderByCosineDistanceAsync(contextCommunity, query, 0, 10, cancellationToken);
+        var records = await conceptRepository.FindOrderByCosineDistanceAsync(contextCommunity, query, 0, 10, cancellationToken);
         var actions = await actionRepository.FindOrderByCosineDistanceAsync(contextCommunity, query, 0, 10, cancellationToken);
         var rules = await ruleRepository.FindOrderByCosineDistanceAsync(contextCommunity, query, 0, 10, cancellationToken);
         

@@ -9,5 +9,5 @@ type RuleInterpreter(subjectResolver: ISubjectResolver, ruleEvaluator: IDynamicU
         member this.InterpretSubjectAsync(subject, cancellationToken) =
             task {
                 let! rule = subject |> subjectResolver.ResolveAsync cancellationToken
-                return! ruleEvaluator.EvaluateAsync cancellationToken rule Map.empty Map.empty
+                return! ruleEvaluator.EvaluateAsync cancellationToken rule [] Map.empty
             }

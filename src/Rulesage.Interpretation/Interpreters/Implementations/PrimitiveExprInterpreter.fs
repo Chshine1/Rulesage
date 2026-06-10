@@ -39,5 +39,5 @@ type PrimitiveExprInterpreter
                         literalSubj
                         |> subjectResolver.ResolveWithConstraintAsync ctx.CtSource.Token r.ExpctedType
 
-                    return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token rule Map.empty Map.empty
+                    return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token rule [] Map.empty
                 }

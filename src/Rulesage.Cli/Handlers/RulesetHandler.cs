@@ -7,7 +7,7 @@ namespace Rulesage.Cli.Handlers;
 
 public class RulesetHandler(
     ICommunityRepository communityRepository,
-    IRecordRepository recordRepository,
+    IConceptRepository conceptRepository,
     IActionRepository actionRepository,
     IRuleRepository ruleRepository,
     IDocumentSpaceProvider documentSpaceProvider,
@@ -20,7 +20,7 @@ public class RulesetHandler(
         var document = DocumentParser.Parse(await File.ReadAllTextAsync(documentPath, cancellationToken));
 
         await communityRepository.SaveAsync(document.Communities, cancellationToken);
-        await recordRepository.SaveAsync(document.Records, cancellationToken);
+        await conceptRepository.SaveAsync(document.Records, cancellationToken);
         await actionRepository.SaveAsync(document.Actions, cancellationToken);
         await ruleRepository.SaveAsync(document.Rules, cancellationToken);
         
@@ -34,7 +34,7 @@ public class RulesetHandler(
         
         var embedding = embeddingService.GetEmbedding(cleaned);
 
-        var records = await recordRepository.FindOrderByCosineDistanceAsync(community, embedding, 0, take, cancellationToken);
+        var records = await conceptRepository.FindOrderByCosineDistanceAsync(community, embedding, 0, take, cancellationToken);
         var actions = await actionRepository.FindOrderByCosineDistanceAsync(community, embedding, 0, take, cancellationToken);
         var rules = await ruleRepository.FindOrderByCosineDistanceAsync(community, embedding, 0, take, cancellationToken);
 

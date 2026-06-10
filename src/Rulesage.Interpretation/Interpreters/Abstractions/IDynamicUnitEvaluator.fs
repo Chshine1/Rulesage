@@ -9,6 +9,6 @@ type IDynamicUnitEvaluator<'TExpr> =
     abstract EvaluateAsync:
         cancellationToken: CancellationToken ->
         expr: 'TExpr ->
-        genericArgs: Map<string, TypeExpr> ->
+        genericArgs: TypeExpr list ->
         args: Map<string, InterpretedValue> ->
             Task<InterpretedValue>

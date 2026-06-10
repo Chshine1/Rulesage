@@ -17,6 +17,6 @@ type InterpretedValue =
 and ConceptInstance =
     {
         ConceptName: Identifier
-        GenericArgs: Map<string, TypeExpr>
+        GenericArgs: TypeExpr list
         Arguments: Map<string, InterpretedValue>
     }

@@ -5,12 +5,12 @@ open System.Threading
 open System.Threading.Tasks
 open Rulesage.Common.Grammar.Ast
 
-type IRecordRepository =
+type IConceptRepository =
     inherit IDocumentRepository
 
     abstract FindByIdsAsync:
         ids: string seq * [<Optional; DefaultParameterValue(CancellationToken())>] cancellationToken: CancellationToken ->
-            Task<RecordExpr seq>
+            Task<ConceptExpr seq>
 
     abstract FindOrderByCosineDistanceAsync:
         contextCommunity: string *
@@ -18,9 +18,9 @@ type IRecordRepository =
         skip: int *
         take: int *
         [<Optional; DefaultParameterValue(CancellationToken())>] cancellationToken: CancellationToken ->
-            Task<(RecordExpr * float32) seq>
+            Task<(ConceptExpr * float32) seq>
 
     abstract SaveAsync:
-        records: RecordExpr seq *
+        records: ConceptExpr seq *
         [<Optional; DefaultParameterValue(CancellationToken())>] cancellationToken: CancellationToken ->
             Task<int>

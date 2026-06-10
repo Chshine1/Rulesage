@@ -9,7 +9,7 @@ type ServiceCollectionExtensions =
     [<Extension>]
     static member AddInfrastructure(services: IServiceCollection) =
         services
-            .AddScoped<IRecordRepository, RecordRepository>()
+            .AddScoped<IConceptRepository, RecordRepository>()
             .AddScoped<IActionRepository, ActionRepository>()
             .AddScoped<IRuleRepository, RuleRepository>()
             .AddScoped<ICommunityRepository, CommunityRepository>()

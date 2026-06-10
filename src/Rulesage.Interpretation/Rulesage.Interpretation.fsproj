@@ -8,15 +8,9 @@
     <ItemGroup>
         <Compile Include="Types\SynthesizedValue.fs" />
 
-        <Compile Include="Services\Abstractions\IActionService.fs" />
-
-        <Compile Include="Services\Abstractions\INodeService.fs" />
-
         <Compile Include="Services\Abstractions\ISubjectResolver.fs" />
 
-        <Compile Include="Services\Implementations\NlTaskResolver.fs" />
-
-        <Compile Include="Services\Implementations\ActionService.fs" />
+        <Compile Include="Services\Implementations\SubjectResolver.fs" />
 
         <Compile Include="SynthesisContext.fs" />
       
@@ -35,6 +29,10 @@
         <Compile Include="Interpreters\Implementations\Domain\SeqExprInterpreter.fs" />
       
         <Compile Include="Interpreters\Implementations\Domain\ValueExprInterpreter.fs" />
+      
+        <Compile Include="Interpreters\Implementations\Evaluators\ConceptEvaluator.fs" />
+      
+        <Compile Include="Interpreters\Implementations\Evaluators\ActionEvaluator.fs" />
       
         <Compile Include="Interpreters\Implementations\Evaluators\RuleEvaluator.fs" />
       

@@ -7,14 +7,15 @@ open Rulesage.Common.Utils.TaskUtils
 open Rulesage.Interpretation.Interpreters.Abstractions
 open Rulesage.Synthesis
 open Rulesage.Synthesis.Interpreters.Abstractions
-open Rulesage.Synthesis.Services.Abstractions
 open Rulesage.Synthesis.Types
 
 type DynamicExprInterpreter
     (
         primitiveItp: IExprInterpreter<PrimitiveExpr>,
-        actionService: IActionService,
-        nodeService: INodeService,
+        conceptRepository: IConceptRepository,
+        conceptEvaluator: IDynamicUnitEvaluator<ConceptExpr>,
+        actionRepository: IActionRepository,
+        actionEvaluator: IDynamicUnitEvaluator<ActionExpr>,
         ruleRepository: IRuleRepository,
         ruleEvaluator: IDynamicUnitEvaluator<RuleExpr>
     ) =
@@ -37,16 +38,16 @@ type DynamicExprInterpreter
         member _.InterpretAsync ctx expr =
             task {
                 match expr with
-                | DynamicExpr.Record(record, args) ->
+                | DynamicExpr.Record((id, gArgs), args) ->
                     let! withValues = synthesizeArgsAsync ctx args
-                    let! node = nodeService.BuildAsync ctx.CtSource.Token (fst record) withValues
-                    return node |> InterpretedValue.Concept
-                | DynamicExpr.ResultOf(action, args) ->
+                    let! concept = conceptRepository.FindByIdsAsync([ id ], ctx.CtSource.Token)
+                    return! conceptEvaluator.EvaluateAsync ctx.CtSource.Token (concept |> Seq.head) gArgs withValues
+                | DynamicExpr.ResultOf((id, gArgs), args) ->
                     let! whereValues = synthesizeArgsAsync ctx args
-                    return! actionService.CallAsync ctx.CtSource.Token (fst action) whereValues
+                    let! action = actionRepository.FindByIdsAsync([ id ], ctx.CtSource.Token)
+                    return! actionEvaluator.EvaluateAsync ctx.CtSource.Token (action |> Seq.head) gArgs whereValues
                 | DynamicExpr.Satisfying(ruleId, args) ->
-                    let! rs = ruleRepository.FindByIdsAsync([ ruleId ], ctx.CtSource.Token)
-                    let subRule = rs |> Seq.head
                     let! forValues = synthesizeArgsAsync ctx args
-                    return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token subRule Map.empty forValues
+                    let! rs = ruleRepository.FindByIdsAsync([ ruleId ], ctx.CtSource.Token)
+                    return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token (rs |> Seq.head) [] forValues
             }

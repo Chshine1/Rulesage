@@ -7,14 +7,15 @@ open Rulesage.Common.Utils.TaskUtils
 open Rulesage.Interpretation.Interpreters.Abstractions
 open Rulesage.Synthesis
 open Rulesage.Synthesis.Interpreters.Abstractions
-open Rulesage.Synthesis.Services.Abstractions
 open Rulesage.Synthesis.Types
 
 type SeqExprInterpreter
     (
         primitiveItp: IExprInterpreter<PrimitiveExpr>,
-        actionService: IActionService,
-        nodeService: INodeService,
+        conceptRepository: IConceptRepository,
+        conceptEvaluator: IDynamicUnitEvaluator<ConceptExpr>,
+        actionRepository: IActionRepository,
+        actionEvaluator: IDynamicUnitEvaluator<ActionExpr>,
         ruleRepository: IRuleRepository,
         ruleEvaluator: IDynamicUnitEvaluator<RuleExpr>
     ) =
@@ -79,17 +80,34 @@ type SeqExprInterpreter
             let ct = ctx.CtSource.Token
 
             match expr with
-            | SeqExpr.Record(record, args) ->
+            | SeqExpr.Record((conceptId, gArgs), args) ->
                 processSeq
                     ctx
                     args
                     (fun withValues ->
                         task {
-                            let! node = nodeService.BuildAsync ct (fst record) withValues
-                            return node |> InterpretedValue.Concept
+                            let! concept = conceptRepository.FindByIdsAsync([ conceptId ], ctx.CtSource.Token)
+
+                            return!
+                                conceptEvaluator.EvaluateAsync
+                                    ctx.CtSource.Token
+                                    (concept |> Seq.head)
+                                    gArgs
+                                    withValues
                         }
                     )
-            | SeqExpr.ResultOf(action, args) -> processSeq ctx args (actionService.CallAsync ct (fst action))
+            | SeqExpr.ResultOf((actionId, gArgs), args) ->
+                processSeq
+                    ctx
+                    args
+                    (fun whereValues ->
+                        task {
+                            let! action = actionRepository.FindByIdsAsync([ actionId ], ctx.CtSource.Token)
+
+                            return!
+                                actionEvaluator.EvaluateAsync ctx.CtSource.Token (action |> Seq.head) gArgs whereValues
+                        }
+                    )
             | SeqExpr.Satisfying(ruleId, args) ->
                 processSeq
                     ctx
@@ -97,7 +115,6 @@ type SeqExprInterpreter
                     (fun forValues ->
                         task {
                             let! rs = ruleRepository.FindByIdsAsync([ ruleId ], ct)
-                            let subRule = rs |> Seq.head
-                            return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token subRule Map.empty forValues
+                            return! ruleEvaluator.EvaluateAsync ctx.CtSource.Token (rs |> Seq.head) [] forValues
                         }
                     )

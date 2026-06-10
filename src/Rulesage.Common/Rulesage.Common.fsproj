@@ -22,7 +22,7 @@
         <Compile Include="RuleExpr.fs" />
         <Compile Include="DocumentParser.fs" />
         <Compile Include="Repositories\Abstractions\IDocumentRepository.fs" />
-        <Compile Include="Repositories\Abstractions\IRecordRepository.fs" />
+        <Compile Include="Repositories\Abstractions\IConceptRepository.fs" />
         <Compile Include="Repositories\Abstractions\IActionRepository.fs" />
         <Compile Include="Repositories\Abstractions\IRuleRepository.fs" />
         <Compile Include="Repositories\Abstractions\ICommunityRepository.fs" />

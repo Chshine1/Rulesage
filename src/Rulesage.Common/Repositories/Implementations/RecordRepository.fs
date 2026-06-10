@@ -20,7 +20,7 @@ type RecordRepository(dataSource: NpgsqlDataSource, jsonOptions: JsonSerializerO
     let serialize target : string =
         JsonSerializer.Serialize(target, jsonOptions)
 
-    interface IRecordRepository with
+    interface IConceptRepository with
         member _.GetDocumentsAsync(cancellationToken) =
             task {
                 use conn = dataSource.CreateConnection()
