@@ -1,0 +1,49 @@
+﻿domain ruleset-meta
+
+@"A ruleset unit means one of: a concept, an action or a rule."
+concept ruleset-unit
+
+@"A ruleset is divided into disjoint domains, each containing units that focus on a same domain aspect."
+concept domain with
+  name(literal),
+  unitNames(literal[])
+
+@"An indentifier referring to a type that's manageable within the ruleset boundary."
+concept type-reference with
+  identifier(literal)                   // identifying either the 'literal' type, a concept shape with generic parameters closed (by type references), or a generic parameter in the current generic context
+
+@"A structured domain data shape, possibly generic. A concept with no fields is a pure marker (category tag)."
+concept concept with
+  name(literal),
+  annotation(literal),
+  typeParameters(literal[]),            // generic parameters, e.g. [] or ["T","U"]
+  fields(tuple<literal, type-reference>[])      // fieldName-type dictionary, can be empty for pure marker concepts
+
+@"An atomic external operation, possibly generic. It declares a minimal, domain‑agnostic action executed externally."
+concept action with
+  name(literal),
+  annotation(literal),
+  typeParameters(literal[]),            // generic parameters, e.g. [] or ["T","U"]
+  parameters(tuple<literal, type-reference>[]), // paramName-type dictionary
+  returnType(literal),
+  luaScript(literal)
+
+@"A single step inside a rule body, stored as the original DSL fragment."
++"Nested substeps remain embedded in the value; no further structuring is required."
+concept rule-step with
+  dsl(literal)                    // the literal DSL text describing the step
+
+@"A standardized process to interpret the for parameters' concepts into a standardized result."
+concept rule with
+  domain(literal),
+  name(literal),
+  annotation(literal),
+  typeParameters(literal[]),            // generic parameters, e.g. [] or ["T","U"]
+  forParameters(tuple<literal, type-reference>[]),
+  steps(tuple<literal, rule-step>[])
+
+@"A constraint rule is a rule whose inner implementation resolves to a partial constraint on some subject."
+concept constraint-rule
+
+@"A resolver rule is a rule with a complete proccess that combines and resolves a subject."
+concept resolver-rule
